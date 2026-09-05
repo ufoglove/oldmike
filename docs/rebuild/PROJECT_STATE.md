@@ -155,3 +155,18 @@
   3. `POST ...` (`action: CHECK_WRITE`)：精確攔截寫入請求，返回 `permitted: false`（理由：`Field 'research_question' is locked (version 1, policy AUTOMATION_POLICY). Overwrite denied.`）。
   4. `POST ...` (`action: HANDOFF`)：成功執行至下一階段 `blueprint`，生成包含合規 `TopicSelectionSnapshot` 之不可變快照 `scs_c0c301cb-ab0b-455a-b65d-7cef0234e52e`（狀態 `COMPLETED`），正式寫入 `stage_completion_snapshots` 表。
 - **結論**：正式站共用操作層（Readiness 門禁、後端寫入鎖防護、缺失同步、交接快照簽發）全面實機認證通過！
+
+---
+
+## V3-U03-R1（Stage 03）批次 A：Federated 文獻契約＋能力矩陣（2026-09-06 UTC）
+- **規格基準**：`docs/stage03/spec-v3-3.2.0.md`（v3.2.0, 85KB；commit `3d280ff` 定錨）。
+- **Commit `9bb019e`**：批次 A 契約層＋23 項 mock contract tests ALL PASS，tsc 0。
+  - `lib/federated-literature-contract.ts`：13 能力鍵 × 7 狀態能力矩陣；ProviderRecord provenance（upstream/publisher/retrieved_at/response_hash/rights/metric_system）；Canonical dedup（DOI/PMID/arXiv 精確 + title-year fuzzy；work/study family）；QuotaLedger billing pool。
+  - `lib/federated-literature-adapters.ts`：Consensus/Ai4Scholar/OpenAlex/Crossref/S2 能力快照（2026-09-06 官方查證）；Consensus search=documented（非 live）、aggregation=unsupported、journal param=ranking preference；Ai4Scholar=unknown-only（尚無 adapter）；pending adapter 拒絕偽造 LIVE。
+  - `scripts/verify-stage03-batch-a-contracts.ts`：23 PASS（能力形狀、Consensus not-live guard、DOI 多 provider → 1 canonical＋3 ProviderRecord、同 provider 去重、fuzzy 合併、no-fake-live）。
+- **交付文件**：`docs/rebuild/phase-03-provider-capability-and-live-tests.md`（LIVE/BLOCKED/NOT_RUN 逐項如實）。
+- **誠實標記**：
+  - Consensus `/v1/search` vs `/v1/quick_search` 端點差異：**BLOCKED**（官方頁面不一致、docs.consensus.app 403；需授權 LIVE 帳號測試裁決）。
+  - Consensus/Ai4Scholar LIVE 查詢：**BLOCKED**（本機 dev 無任何文獻金鑰；消耗共用月額度需使用者授權）。
+  - Ai4Scholar adapter：**NOT_RUN**（repo 無 adapter；prod env 有 key 但未經契約測試）。
+- **下一步**：LIVE Consensus contract test（需授權）→ 批次 B（附件補強：Profile/雷達三分類/一鍵靈感四區/每日推薦能力）。
