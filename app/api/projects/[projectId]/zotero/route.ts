@@ -17,6 +17,7 @@ import {
   markZoteroSynced,
   saveZoteroConnection,
 } from "@/lib/research-project-repository";
+import { listZoteroProjectBindings, markProjectBindingsDisconnected, upsertZoteroProjectBinding } from "@/lib/zotero-binding-repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -56,10 +57,13 @@ export async function GET(request: Request, context: { params: Promise<{ project
     if (!authenticated.ok) return authenticated.response;
     const tenant = await resolveResearchTenant(authenticated.session.user.id, projectId);
     if (!tenant) return json({ ok: false, code: "research_project_not_found" }, 404);
-    const [connection, project] = await Promise.all([getZoteroConnection(tenant, authenticated.session.user.id), getResearchProject(tenant)]);
+    const connection = await getZoteroConnection(tenant, authenticated.session.user.id);
+    const project = await getResearchProject(tenant).catch(() => null);
+    const bindings = await listZoteroProjectBindings(tenant).catch(() => []);
     return json({
       ok: true,
       connection: connection ? { libraryType: connection.libraryType, libraryId: connection.libraryId, collectionKey: connection.collectionKey, collectionName: connection.collectionName, authMethod: connection.authMethod, lastSyncedAt: connection.lastSyncedAt, syncStatus: connection.syncStatus, hasApiKey: Boolean(connection.apiKey) } : null,
+      bindings,
       projectZotero: project?.zotero ?? null,
     });
   } catch (error) { return publicError(error); }
@@ -99,10 +103,12 @@ export async function POST(request: Request, context: { params: Promise<{ projec
           },
         });
         await markZoteroSynced(tenant, { userId, status: "CONNECTED", libraryType, libraryId, collectionKey: typeof body.collectionKey === "string" ? body.collectionKey.trim() : undefined });
+        await upsertZoteroProjectBinding(tenant, { userId, libraryType, libraryId, collectionKey: typeof body.collectionKey === "string" ? body.collectionKey.trim() : null, collectionName: typeof body.collectionName === "string" ? body.collectionName.trim() : null, bindingStatus: "CONNECTED" }).catch(() => undefined);
         return json({ ok: true, note: "Zotero 已連線；API Key 僅存於伺服器端（加密）。" });
       }
       case "disconnect": {
         await clearZoteroConnection(tenant, { userId });
+        await markProjectBindingsDisconnected(tenant, userId).catch(() => undefined);
         return json({ ok: true, note: "已斷開 Zotero；網站內既有文獻與研究資料未刪除。" });
       }
       case "sync": {
@@ -117,10 +123,12 @@ export async function POST(request: Request, context: { params: Promise<{ projec
             imported += 1;
           }
           await markZoteroSynced(tenant, { userId, status: "SYNCED", libraryType: connection.libraryType, libraryId: connection.libraryId, collectionKey: connection.collectionKey ?? undefined });
+          await upsertZoteroProjectBinding(tenant, { userId, libraryType: connection.libraryType as "user" | "group", libraryId: connection.libraryId, collectionKey: connection.collectionKey ?? null, collectionName: connection.collectionName ?? null, bindingStatus: "SYNCED", lastSuccessfulSyncAt: new Date(), lastError: null }).catch(() => undefined);
           return json({ ok: true, imported, note: `已從 Zotero 同步 ${imported} 筆文獻（含去重）。` });
         } catch (syncError) {
           // 同步中途失敗：回寫 SYNC_ERROR，避免狀態卡在 SYNCING
           try { await markZoteroSynced(tenant, { userId, status: "SYNC_ERROR" }); } catch { /* 狀態回寫失敗不遮罩原始錯誤 */ }
+          await upsertZoteroProjectBinding(tenant, { userId, libraryType: connection.libraryType as "user" | "group", libraryId: connection.libraryId, collectionKey: connection.collectionKey ?? null, collectionName: connection.collectionName ?? null, bindingStatus: "SYNC_FAILED", lastError: syncError instanceof Error ? syncError.message.slice(0, 300) : "sync_failed" }).catch(() => undefined);
           throw syncError;
         }
       }

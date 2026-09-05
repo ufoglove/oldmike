@@ -32,3 +32,9 @@
 - 越權（批次一）PASS。
 - 真實 AI 正測：BLOCKED_EXTERNAL_CONFIG（局部）— sandbox 直連 gateway 路徑與 production env 不一致（code 要求 base pathname="/"、gateway 實務路由 /v1/chat/completions 才 200；isPrivateGatewayUrl 只接受根路徑 → 本機無法以同 env 完成正測）。保留待正式/staging 環境驗證；不宣稱 AI 已真實連通。
 - 隔離環境事件：誤殺 consensus MCP server（23695）→ runtime 重啟但雙實例 → 已清理；工具狀態待 gateway 重整（見 PROJECT_STATE OPEN ISSUES）。
+
+## 批次三：Zotero binding 串接＋evidence_notes API（v3u01_dev，2026-09-05 09:0x）
+- Zotero per-project GET 200 含 bindings 陣列（seed row SYNCED 正確讀出）；connect/disconnect/sync 已串接 binding 表（CONNECTED/SYNCED/SYNC_FAILED/DISABLED）。真實 Zotero 往返需正式 ZOTERO_API_KEY → BLOCKED_EXTERNAL_CONFIG。
+- evidence-notes：create 201／update 200／list 200（含更新文字）；跨帳號讀取/刪除他人筆記 404（隔離 PASS）；owner delete 200。
+- 修正：updateEvidenceNote 參數序號錯位（$4 被佔用）→ 改游標式編號 PASS；zotero GET 的 projectZotero 改 best-effort（無 research_projects 時不再整段 503）。
+- 環境註記：本機基底缺 research_projects（migration 檔 0026–0030 缺檔 R1）→ 相關 route 以 best-effort 處理或於正式環境驗證。
