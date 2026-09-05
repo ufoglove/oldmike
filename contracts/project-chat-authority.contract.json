@@ -1,0 +1,20 @@
+{
+  "contractVersion": "old-mike-project-chat-authority/1.2.0",
+  "formalIdentityAuthority": "PORTAL_SESSION",
+  "formalTenantAuthority": "PORTAL_SERVER_AUTHORIZATION_PLUS_POSTGRESQL",
+  "formalProjectAuthority": "POSTGRESQL",
+  "formalDocumentAuthority": "POSTGRESQL_APPEND_ONLY_VERSIONS",
+  "agentFilesystemAuthority": "EPHEMERAL_COMPUTE_CACHE_ONLY",
+  "projectCreateState": "DEPLOYABLE_POSTGRES_TRANSACTION_NOT_ONLINE_UNTIL_PORTAL_DEPLOYMENT",
+  "projectCreatePersistence": "EXISTING_SCHEMA_APPEND_ONLY_S0_OR_TYPED_PENDING_COMMITMENT",
+  "chatState": "ENABLED_EXISTING_PRIVATE_OPENCLAW_CONFIGURATION",
+  "chatEndpointFamily": "CHAT_COMPLETIONS_ONLY",
+  "chatContextAuthority": "BOUNDED_AUTHORIZED_POSTGRESQL",
+  "liveFeatureFlagRequired": false,
+  "logicalDefaultAgentAlias": "openclaw/default",
+  "backendModelOverride": null,
+  "protocolFallback": false,
+  "browserProviderCalls": false,
+  "sharedFilesystemTenantBoundary": false,
+  "normalUiProviderIdentity": "OLD_MIKE_ONLY"
+}

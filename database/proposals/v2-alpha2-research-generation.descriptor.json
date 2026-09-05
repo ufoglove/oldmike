@@ -1,0 +1,16 @@
+{
+  "contractVersion": "old-mike-v2-alpha2-bytebase-proposal/1.0.0",
+  "status": "PROPOSAL_ONLY_NOT_APPLIED",
+  "targetSchemaAuthority": "0001_THROUGH_0006",
+  "forbiddenDependency": "0007",
+  "forwardDdl": "v2-alpha2-research-generation.up.sql",
+  "queryOnlyVerification": "v2-alpha2-research-generation.verify.sql",
+  "queryOnlyReconciliation": "v2-alpha2-research-generation.reconcile.sql",
+  "onlineExecution": "NOT_AUTHORIZED",
+  "formalResearchWrites": 0,
+  "tables": ["research_generation_jobs", "research_generation_effects", "research_generation_results"],
+  "idempotencyScope": ["workspace_id", "created_by_user_id", "request_id"],
+  "projectKeyTypes": { "workspace_id": "text", "project_id": "text_nullable" },
+  "effectAuthority": "ONE_FENCED_EFFECT_ROW_PER_JOB_NO_RESEND_AFTER_SUBMISSION_POSSIBLE",
+  "resultAuthority": "APPEND_ONLY_ONE_RESULT_PER_JOB_PARENT_RESULT_AND_SELECTED_ITEM_HASH_BOUND"
+}

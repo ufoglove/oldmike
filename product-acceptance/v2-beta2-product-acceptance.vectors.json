@@ -1,0 +1,31 @@
+{
+  "schemaId": "old-mike-v2-beta2/product-acceptance-vectors/4",
+  "contractId": "old-mike-v2-beta2/product-acceptance/4",
+  "materialHashKnownAnswers": [
+    { "id": "ascii", "content": "abc", "contentByteLength": 3, "canonicalPreimageByteLength": 5, "contentHash": "6cc43f858fbb763301637b5af970e2a46b46f461f27e5a0f41e009c59b827b25", "rawUtf8Sha256Negative": "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" },
+    { "id": "crlf", "content": "line1\r\nline2", "contentByteLength": 12, "canonicalPreimageByteLength": 16, "contentHash": "5fcbd27b066836fb900c48269972054847075260e87794824a021c48d6caa0f7", "rawUtf8Sha256Negative": "d14a91a6d1c6ee83bf0c774ebecbee6d8b393b395dae29eea839c354d6fba9c0" },
+    { "id": "leading-trailing-whitespace", "content": "  abc  ", "contentByteLength": 7, "canonicalPreimageByteLength": 9, "contentHash": "91ef169521304d6da79f9652cd8bc88ac6f4c9730c2dd31496cc8acd97cfb3bc", "rawUtf8Sha256Negative": "e1df0bfff7ba8ed81085b91ad7dde5d31777855835b80db6d99b56ef9f3aaa6b" },
+    { "id": "combining-mark", "content": "é", "contentByteLength": 3, "canonicalPreimageByteLength": 5, "contentHash": "3d68ce21f2899a475713cdbe7562ba9bdb6b1dfde8af1f221bdff4a0935b53b2", "rawUtf8Sha256Negative": "bf12767b0f2a56b2190075bae8169f656e3ce8d6357d4aff184bc6c7ea48f9f6" },
+    { "id": "emoji-nonbmp", "content": "😀", "contentByteLength": 4, "canonicalPreimageByteLength": 6, "contentHash": "7a0c50b92434b015545fe93ab723db2d4b2cdd14a441405624a9ce8be29f1d5a", "rawUtf8Sha256Negative": "f0443a342c5ef54783a111b51ba56c938e474c32324d90c3a60c9c8e3a37e2d9" },
+    { "id": "quote-backslash-json-escape", "content": "a\"b\\c", "contentByteLength": 5, "canonicalPreimageByteLength": 9, "contentHash": "29e409e74462be098277d1428e52e22cd782e73a9f50b4f4f26e6527ab583eca", "rawUtf8Sha256Negative": "bd558229236e7dc57de12841c13ceb1457fb3f8d462404e7fab1c93914d5a8a0" }
+  ],
+  "vectors": [
+    {
+      "id": "partial-material-success",
+      "kind": "PARTIAL_SUCCESS",
+      "materials": [
+        { "materialId": "acceptance-material-01", "kind": "ABSTRACT", "title": "摘要原文", "content": "  Unicode é 與 😀；原始前後空白保留。  ", "contentByteLength": 54, "contentHash": "e6a6b99aa568a88df4275ed9e9ffef08e520a59ae58886e5ae1e4e31f623bf65" },
+        { "materialId": "acceptance-material-02", "kind": "METHODS", "title": "方法原文", "content": "第一行\r\n第二行；限定為未驗證材料。", "contentByteLength": 50, "contentHash": "5be5c122cb4c06ebc61556389f3240c15b7dfc942bf301d2c7c4e009fd07f071" },
+        { "materialId": "acceptance-material-03", "kind": "RESULTS", "title": "結果原文", "content": "只提供描述性材料，不建立因果或正式研究寫入。", "contentByteLength": 66, "contentHash": "1ce158ce43fbb9230677923d7a0935a7c20a0b71cceb79a12ec6984c600fd649" }
+      ],
+      "expected": { "directionCount": 3, "recommendedLane": "BALANCED_RECOMMENDED", "s0FieldCount": 13, "formalResearchWrites": 0 }
+    },
+    { "id": "unicode-blank-reject", "kind": "MATERIAL_REJECT", "content": "　\t\r\n ", "expectedCode": "beta2_material_content_invalid" },
+    { "id": "completion-unknown", "kind": "COMPLETION_UNKNOWN", "expectedLookupOnly": true, "expectedResubmit": 0 },
+    { "id": "terminal-reject", "kind": "TERMINAL_REJECTED", "expectedSuccess": false, "expectedResubmit": 0 },
+    { "id": "exact-replay", "kind": "EXACT_REPLAY", "expectedAppendDelta": 0, "expectedSubmissionDelta": 0 },
+    { "id": "same-key-conflict", "kind": "SAME_KEY_CONFLICT", "expectedCode": "beta2_idempotency_conflict", "expectedEffectDelta": 0 },
+    { "id": "auth-tenant-project-negative", "kind": "AUTHORITY_REJECT", "expectedStatuses": { "unauthenticated": 401, "disabled": 401, "passwordChangeRequired": 428, "crossTenant": 404, "inactive": 404, "unknown": 404 }, "expectedEffectDelta": 0 },
+    { "id": "partial-material-browser-dom-lf", "kind": "PARTIAL_BROWSER_DOM", "stage": "BROWSER_DOM_TEXT_VALUE", "targetMaterialId": "acceptance-material-02", "content": "第一行\n第二行；限定為未驗證材料。", "contentByteLength": 49, "canonicalPreimageByteLength": 52, "contentHash": "256a44a40bc20a0c09b7c94277c33ad64a142f823c4d899de2178e78ad28a685", "rawUtf8Sha256Negative": "8da160dc6825a2267a8edc21ce5367c0f3642c51569aff48f77bb4a95351204d" }
+  ]
+}

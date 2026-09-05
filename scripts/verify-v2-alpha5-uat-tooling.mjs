@@ -1,0 +1,21 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const workspace = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+const descriptor = JSON.parse(await readFile(path.join(workspace, "alpha5-uat-tooling/alpha5-local-functional-uat.descriptor.json"), "utf8"));
+const launcher = await readFile(path.join(workspace, "alpha5-uat-tooling/alpha5-local-functional-uat.mjs"), "utf8");
+const entry = await readFile(path.join(workspace, "research-portal/scripts/v2-alpha5-browser-entry.mjs"), "utf8");
+assert.equal(descriptor.readiness.host, "127.0.0.1");
+assert.equal(path.isAbsolute(descriptor.sourceWorkspaceRoot), true);
+assert.equal(path.isAbsolute(descriptor.isolatedWorkspaceRoot), true);
+assert.notEqual(descriptor.sourceWorkspaceRoot, descriptor.isolatedWorkspaceRoot);
+assert.deepEqual(descriptor.readiness.paths, ["/v2-alpha5-local"]);
+assert.deepEqual(Object.keys(descriptor.environment).sort(), ["NEXT_TELEMETRY_DISABLED", "OLD_MIKE_V2_ALPHA2_SYNTHETIC_PRINCIPAL", "OLD_MIKE_V2_ALPHA5_LOCAL_PROTOTYPE", "TEST_FIXTURE"]);
+assert.match(launcher, /shell:\s*false/gu);
+assert.doesNotMatch(launcher, /powershell|process\.cwd\(\)/iu);
+assert.match(launcher, /terminateExactChildTree/u);
+assert.match(launcher, /cleanupIsolated/u);
+assert.match(entry, /__reactProps/u);
+console.log(JSON.stringify({ status: "PASS", explicitRoots: true, loopbackOnly: true, shellFalse: true, hydrationReady: true, PowerShell: false }));

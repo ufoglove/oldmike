@@ -1,0 +1,33 @@
+@media (max-width: 980px) {
+  .chat {
+    position: static;
+    z-index: auto;
+    grid-column: 2;
+    width: auto;
+    height: auto;
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .sidebar {
+    position: static;
+    z-index: auto;
+    width: 100%;
+    height: auto;
+    padding-bottom: 1rem;
+    box-shadow: none;
+  }
+
+  .identity {
+    position: static;
+    margin-top: 1rem;
+  }
+
+  .chat {
+    position: static;
+    z-index: auto;
+    width: 100%;
+    height: auto;
+  }
+}

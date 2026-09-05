@@ -1,0 +1,14 @@
+{
+  "contractVersion": "taiwan-proposal-studio/1.0.0",
+  "fixtureAuthority": "SYNTHETIC_LOCAL_ONLY_NOT_OFFICIAL_NOT_FOR_SUBMISSION",
+  "reviewNow": "2026-08-23T12:00:00.000Z",
+  "scenarios": [
+    { "name": "NSTC_COMPLETE", "mode": "NSTC_RESEARCH", "humanVerified": true, "retrievedAt": "2026-08-20T12:00:00.000Z", "requirementStatus": "PASS", "unresolved": false },
+    { "name": "NSTC_UNKNOWN", "mode": "NSTC_RESEARCH", "humanVerified": true, "retrievedAt": "2026-08-20T12:00:00.000Z", "requirementStatus": "UNKNOWN", "unresolved": true },
+    { "name": "NSTC_STALE", "mode": "NSTC_RESEARCH", "humanVerified": true, "retrievedAt": "2025-01-01T00:00:00.000Z", "requirementStatus": "PASS", "unresolved": false },
+    { "name": "MOE_COMPLETE", "mode": "MOE_TEACHING_PRACTICE", "humanVerified": true, "retrievedAt": "2026-08-20T12:00:00.000Z", "requirementStatus": "PASS", "unresolved": false },
+    { "name": "MOE_UNKNOWN", "mode": "MOE_TEACHING_PRACTICE", "humanVerified": false, "retrievedAt": "2026-08-20T12:00:00.000Z", "requirementStatus": "UNKNOWN", "unresolved": true },
+    { "name": "MOE_STALE", "mode": "MOE_TEACHING_PRACTICE", "humanVerified": true, "retrievedAt": "2025-01-01T00:00:00.000Z", "requirementStatus": "PASS", "unresolved": false }
+  ],
+  "authorityWarning": "All program names, source URLs, requirements, amounts, dates and examples generated from this suite are visibly synthetic. Current-year official NSTC or MOE sources and Human Gate review are required before promotion."
+}

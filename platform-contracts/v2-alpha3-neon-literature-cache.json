@@ -1,0 +1,34 @@
+{
+  "contractVersion": "old-mike-v2-alpha3/neon-literature-cache/1",
+  "status": "INACTIVE_CONTRACT_ONLY",
+  "authority": "DEIDENTIFIED_PUBLIC_METADATA_CACHE_ONLY",
+  "tables": [
+    "normalized_work_versions",
+    "search_snapshots",
+    "search_snapshot_items",
+    "connector_receipts"
+  ],
+  "forbiddenFields": [
+    "tenantId",
+    "userId",
+    "projectId",
+    "rawQuery",
+    "chat",
+    "prompt",
+    "manuscript",
+    "dataset",
+    "abstract",
+    "fulltext",
+    "rawUrl",
+    "rawHttpBody",
+    "providerBody",
+    "token"
+  ],
+  "cacheProfiles": {
+    "ON_DEMAND": { "freshHours": 24, "staleHours": 168, "purgeHours": 720 },
+    "WEEKLY_DOMAIN_RADAR": { "freshHours": 168, "staleHours": 720, "purgeHours": 2160 }
+  },
+  "synchronousResearchStartDependency": false,
+  "writePolicy": "BEST_EFFORT_MUST_NOT_CHANGE_USER_RESULT",
+  "liveInventoryOrCapacityClaim": false
+}

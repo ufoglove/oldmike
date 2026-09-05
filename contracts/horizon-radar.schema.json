@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "old-mike://research-portal/v1.3.2/horizon-radar",
+  "type": "object", "additionalProperties": false, "required": ["status", "mode", "searchWindow"],
+  "properties": {
+    "status": { "enum": ["success", "blocked", "error"] }, "mode": { "enum": ["UNVERIFIED", "BLOCKED"] }, "searchWindow": { "type": "string", "maxLength": 100 }, "checkedAt": { "type": "string", "maxLength": 40 }, "message": { "type": "string", "maxLength": 500 }, "searchLog": { "type": "array", "maxItems": 20, "items": { "type": "string", "maxLength": 500 } }, "items": { "type": "array", "maxItems": 20, "items": { "type": "object", "additionalProperties": false, "required": ["title", "summary", "status", "sources", "unknowns"], "properties": { "title": { "type": "string" }, "summary": { "type": "string" }, "status": { "enum": ["EMERGING", "GROWING", "CONTESTED", "UNRESOLVED", "OPPORTUNITY"] }, "sources": { "type": "array", "items": { "$ref": "topic-lab.schema.json#/$defs/source" } }, "unknowns": { "type": "array", "items": { "type": "string" } } } } }
+  }
+}

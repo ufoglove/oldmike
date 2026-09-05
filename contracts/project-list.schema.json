@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://old-mike.invalid/contracts/research-portal/project-list.v1.json",
+  "title": "Old Mike Research Portal project list response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "projects"],
+  "properties": {
+    "status": { "const": "success" },
+    "projects": {
+      "type": "array",
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["project_id", "path", "working_title", "domain", "output_track", "current_stage", "next_gate", "recommended_action", "evidence_status", "risk_status", "human_gate_status", "known", "unknown", "assumptions", "risks", "human_confirmations", "artifact_paths"],
+        "properties": {
+          "project_id": { "type": "string", "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$" },
+          "path": { "type": "string", "pattern": "^projects/active/[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$" },
+          "working_title": { "type": "string", "minLength": 1, "maxLength": 160 },
+          "domain": { "type": "string", "enum": ["AI × 教育", "AI × 職業安全與教育訓練", "AI × 環境工程與環境資源管理", "AI × 能源跨領域應用", "AR/VR/XR × 教育", "AR/VR/XR × 職業安全與教育訓練"] },
+          "output_track": { "type": "string", "enum": ["NSTC", "MOE", "SCI", "SSCI"] },
+          "current_stage": { "type": "string", "enum": ["S0_INTAKE", "S1_SCOUT", "S2_QUESTION", "S3_DESIGN", "S4_EXECUTE", "S5_ANALYZE", "S6_WRITE", "S7_SUBMIT", "S8_REVISE", "S9_ARCHIVE"] },
+          "next_gate": { "type": "string", "minLength": 1 },
+          "recommended_action": { "type": "string", "minLength": 1 },
+          "evidence_status": { "type": "string", "enum": ["UNVERIFIED", "SUPPORTED", "VERIFIED", "BLOCKED"] },
+          "risk_status": { "type": "string", "enum": ["UNVERIFIED", "SUPPORTED", "VERIFIED", "BLOCKED"] },
+          "human_gate_status": { "type": "string", "enum": ["REQUIRED", "CLEAR", "UNVERIFIED"] },
+          "known": { "$ref": "#/$defs/stringArray" },
+          "unknown": { "$ref": "#/$defs/stringArray" },
+          "assumptions": { "$ref": "#/$defs/stringArray" },
+          "risks": { "$ref": "#/$defs/stringArray" },
+          "human_confirmations": { "$ref": "#/$defs/stringArray" },
+          "artifact_paths": { "$ref": "#/$defs/stringArray" }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "stringArray": {
+      "type": "array",
+      "maxItems": 40,
+      "items": { "type": "string", "maxLength": 1000 }
+    }
+  }
+}

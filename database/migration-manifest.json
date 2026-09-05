@@ -1,0 +1,38 @@
+{
+  "betterAuthVersion": "1.6.29",
+  "order": [
+    "migrations/0001_better_auth_core.up.sql",
+    "migrations/0002_old_mike_tenant.up.sql",
+    "migrations/0003_registration_invites.up.sql",
+    "migrations/0004_registration_invite_revocation.up.sql",
+    "migrations/0005_research_workflow_phase2.up.sql",
+    "migrations/0006_admin_provisioned_accounts.up.sql",
+    "migrations/0007_topic_lab_frontier_radar.up.sql"
+  ],
+  "rollbackOrder": [
+    "migrations/0007_topic_lab_frontier_radar.down.sql",
+    "migrations/0006_admin_provisioned_accounts.down.sql",
+    "migrations/0005_research_workflow_phase2.down.sql",
+    "migrations/0004_registration_invite_revocation.down.sql",
+    "migrations/0003_registration_invites.down.sql",
+    "migrations/0002_old_mike_tenant.down.sql",
+    "migrations/0001_better_auth_core.down.sql"
+  ],
+  "sha256": {
+    "migrations/0001_better_auth_core.up.sql": "87a62b7b42094e8a41ecd1ddb050ffb3582cb87550a0bf374c314e50334ac768",
+    "migrations/0001_better_auth_core.down.sql": "371c85d5adbe3a2abea9e5f9a493974cbae47b1005b9d35e64949a89aeffeef6",
+    "migrations/0002_old_mike_tenant.up.sql": "781be7081ea1be0a319496d0fd4f82fbe57fdaa42a9f663504f810eb31f01597",
+    "migrations/0002_old_mike_tenant.down.sql": "82fea4bdbfa5eff3bc6537cb9c310d0ba42a6c4d30f6d4a0e1ad089a68365a13",
+    "migrations/0003_registration_invites.up.sql": "dbf7a7af07c1d071cd325cc410600dfc6ef20f682aa2cc384df4072ef7e3cbb0",
+    "migrations/0003_registration_invites.down.sql": "40ada3f89bbf1dd98034e08abd3b81b02f1356314d7aaadc79ec62ee4ed7d6a4",
+    "migrations/0004_registration_invite_revocation.up.sql": "db6d91c3c04b27c6131feaea7c144780d87e7c9e1123323a08062bcfd108ae64",
+    "migrations/0004_registration_invite_revocation.down.sql": "163b0b220cd5ae6a1ece943c92e392fd9643209c34a3fe0474111083dce33f9a",
+    "migrations/0005_research_workflow_phase2.up.sql": "34d1c22c0965cbe4d8f3241b80a935a6981d7fe51ee1a275bab171889fa3e1d7",
+    "migrations/0005_research_workflow_phase2.down.sql": "bbb6a06dde8128ad2dde4d1127597a9942dcff76963f79c84a889210cfbea8ba",
+    "migrations/0006_admin_provisioned_accounts.up.sql": "8ba2a874c5b3df87227303f36799fbb1429d51fe112d1013b1824fee5f7826aa",
+    "migrations/0006_admin_provisioned_accounts.down.sql": "6b5b60f04e72ff8604f4ab5469410af7bfa9a730441f46d72281f14d94e41d48",
+    "migrations/0007_topic_lab_frontier_radar.up.sql": "8dce3d2ef516be42e676c4643a14c253de167469e80f7e86cdf8d20f7f80d815",
+    "migrations/0007_topic_lab_frontier_radar.down.sql": "0cbb2231c3fe294da4234d56094d881bcea1706866003a3bfb3a881b15baa03d"
+  },
+  "note": "Checksums are recalculated in the release inventory; npx auth@latest migrate is prohibited."
+}

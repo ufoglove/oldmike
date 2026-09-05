@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "old-mike://contracts/proposal-studio/1.0.0",
+  "title": "Taiwan Proposal Studio structured envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "mode",
+    "callProgram",
+    "officialSource",
+    "bilingual",
+    "narrative",
+    "modeSpecific",
+    "workPackages",
+    "milestones",
+    "kpis",
+    "team",
+    "resources",
+    "budget",
+    "requirements",
+    "attachments",
+    "unresolvedIssues"
+  ],
+  "properties": {
+    "mode": { "enum": ["NSTC_RESEARCH", "MOE_TEACHING_PRACTICE"] },
+    "callProgram": { "$ref": "#/$defs/callProgram" },
+    "officialSource": { "$ref": "#/$defs/source" },
+    "bilingual": { "$ref": "#/$defs/bilingual" },
+    "narrative": { "$ref": "#/$defs/narrative" },
+    "modeSpecific": { "oneOf": [{ "$ref": "#/$defs/nstc" }, { "$ref": "#/$defs/moe" }] },
+    "workPackages": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": { "$ref": "#/$defs/workPackage" }
+    },
+    "milestones": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/milestone" }
+    },
+    "kpis": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": { "$ref": "#/$defs/kpi" }
+    },
+    "team": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 30,
+      "items": { "$ref": "#/$defs/teamRole" }
+    },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": { "$ref": "#/$defs/text" }
+    },
+    "budget": { "$ref": "#/$defs/budget" },
+    "requirements": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": { "$ref": "#/$defs/requirement" }
+    },
+    "attachments": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "items": { "$ref": "#/$defs/attachment" }
+    },
+    "unresolvedIssues": {
+      "type": "array",
+      "maxItems": 40,
+      "items": { "$ref": "#/$defs/text" }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "mode": { "const": "NSTC_RESEARCH" } }, "required": ["mode"] },
+      "then": {
+        "properties": {
+          "officialSource": { "allOf": [{ "$ref": "#/$defs/source" }, { "properties": { "authorityClass": { "const": "NSTC_OFFICIAL" } } }] },
+          "modeSpecific": { "$ref": "#/$defs/nstc" },
+          "requirements": { "items": { "allOf": [{ "$ref": "#/$defs/requirement" }, { "properties": { "category": { "$ref": "#/$defs/nstcRequirementCategory" } } }] } }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "mode": { "const": "MOE_TEACHING_PRACTICE" } }, "required": ["mode"] },
+      "then": {
+        "properties": {
+          "officialSource": { "allOf": [{ "$ref": "#/$defs/source" }, { "properties": { "authorityClass": { "const": "MOE_OFFICIAL" } } }] },
+          "modeSpecific": { "$ref": "#/$defs/moe" },
+          "requirements": { "items": { "allOf": [{ "$ref": "#/$defs/requirement" }, { "properties": { "category": { "$ref": "#/$defs/moeRequirementCategory" } } }] } }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "text": { "type": "string", "minLength": 1 },
+    "identifier": { "type": "string", "minLength": 4, "maxLength": 160, "pattern": "^[A-Za-z0-9._:-]+$" },
+    "digest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "status": { "enum": ["PASS", "FAIL", "UNKNOWN", "NA"] },
+    "callProgram": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["programName", "programCode", "effectiveYear"],
+      "properties": {
+        "programName": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "programCode": { "type": ["string", "null"], "minLength": 1, "maxLength": 160 },
+        "effectiveYear": { "type": "integer", "minimum": 2000, "maximum": 2200 }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourceUrl", "authorityClass", "retrievedAt", "effectiveYear", "sourceHash", "humanVerified"],
+      "properties": {
+        "sourceUrl": { "type": "string", "format": "uri", "pattern": "^https://" },
+        "authorityClass": { "enum": ["NSTC_OFFICIAL", "MOE_OFFICIAL"] },
+        "retrievedAt": { "type": "string", "format": "date-time" },
+        "effectiveYear": { "type": "integer", "minimum": 2000, "maximum": 2200 },
+        "sourceHash": { "$ref": "#/$defs/digest" },
+        "humanVerified": { "type": "boolean" }
+      }
+    },
+    "bilingual": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["titleZhTw", "titleEn", "abstractZhTw", "abstractEn", "keywordsZhTw", "keywordsEn"],
+      "properties": {
+        "titleZhTw": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "titleEn": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "abstractZhTw": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "abstractEn": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "keywordsZhTw": { "type": "array", "minItems": 1, "maxItems": 12, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 80 } },
+        "keywordsEn": { "type": "array", "minItems": 1, "maxItems": 12, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 80 } }
+      }
+    },
+    "narrative": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["problem", "background", "literatureGap", "aims", "researchQuestions", "hypotheses", "innovation", "significance", "expectedImpact", "methods", "sample", "data", "analysis", "ethics", "privacy", "risks", "alternatives"],
+      "properties": {
+        "problem": { "type": "string", "minLength": 1, "maxLength": 16000 },
+        "background": { "type": "string", "minLength": 1, "maxLength": 24000 },
+        "literatureGap": { "type": "string", "minLength": 1, "maxLength": 16000 },
+        "aims": { "$ref": "#/$defs/listRequired12" },
+        "researchQuestions": { "$ref": "#/$defs/listRequired12" },
+        "hypotheses": { "$ref": "#/$defs/listOptional12" },
+        "innovation": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "significance": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "expectedImpact": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "methods": { "type": "string", "minLength": 1, "maxLength": 24000 },
+        "sample": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "data": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "analysis": { "type": "string", "minLength": 1, "maxLength": 16000 },
+        "ethics": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "privacy": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "risks": { "$ref": "#/$defs/listRequired20" },
+        "alternatives": { "$ref": "#/$defs/listRequired20" }
+      }
+    },
+    "listRequired12": { "type": "array", "minItems": 1, "maxItems": 12, "items": { "type": "string", "minLength": 1, "maxLength": 2000 } },
+    "listOptional12": { "type": "array", "maxItems": 12, "items": { "type": "string", "minLength": 1, "maxLength": 2000 } },
+    "listRequired20": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 2000 } },
+    "nstc": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "cm03Narrative", "preliminaryEvidence", "feasibility", "expectedOutputs"],
+      "properties": {
+        "kind": { "const": "NSTC_RESEARCH" },
+        "cm03Narrative": { "type": "string", "minLength": 1, "maxLength": 48000 },
+        "preliminaryEvidence": { "type": "string", "minLength": 1, "maxLength": 16000 },
+        "feasibility": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "expectedOutputs": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 2000 } }
+      }
+    },
+    "moe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "courseContext", "teachingProblem", "intervention", "learningOutcomes", "evaluationDesign", "implementationFidelity", "teachingArtifacts", "reflectionPlan"],
+      "properties": {
+        "kind": { "const": "MOE_TEACHING_PRACTICE" },
+        "courseContext": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "teachingProblem": { "type": "string", "minLength": 1, "maxLength": 12000 },
+        "intervention": { "type": "string", "minLength": 1, "maxLength": 16000 },
+        "learningOutcomes": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 2000 } },
+        "evaluationDesign": { "type": "string", "minLength": 1, "maxLength": 16000 },
+        "implementationFidelity": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "teachingArtifacts": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "type": "string", "minLength": 1, "maxLength": 2000 } },
+        "reflectionPlan": { "type": "string", "minLength": 1, "maxLength": 8000 }
+      }
+    },
+    "workPackage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workPackageId", "title", "objective", "methods", "startMonth", "endMonth"],
+      "properties": {
+        "workPackageId": { "$ref": "#/$defs/identifier" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "objective": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "methods": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "startMonth": { "type": "integer", "minimum": 1, "maximum": 120 },
+        "endMonth": { "type": "integer", "minimum": 1, "maximum": 120 }
+      }
+    },
+    "milestone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["milestoneId", "workPackageId", "dueMonth", "deliverable"],
+      "properties": {
+        "milestoneId": { "$ref": "#/$defs/identifier" },
+        "workPackageId": { "$ref": "#/$defs/identifier" },
+        "dueMonth": { "type": "integer", "minimum": 1, "maximum": 120 },
+        "deliverable": { "type": "string", "minLength": 1, "maxLength": 4000 }
+      }
+    },
+    "kpi": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kpiId", "workPackageId", "measure", "target", "evidencePlan"],
+      "properties": {
+        "kpiId": { "$ref": "#/$defs/identifier" },
+        "workPackageId": { "$ref": "#/$defs/identifier" },
+        "measure": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "target": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "evidencePlan": { "type": "string", "minLength": 1, "maxLength": 4000 }
+      }
+    },
+    "teamRole": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roleId", "role", "responsibility", "contribution"],
+      "properties": {
+        "roleId": { "$ref": "#/$defs/identifier" },
+        "role": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "responsibility": { "type": "string", "minLength": 1, "maxLength": 4000 },
+        "contribution": { "type": "string", "minLength": 1, "maxLength": 4000 }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "items", "totalTwd"],
+      "properties": {
+        "currency": { "const": "TWD" },
+        "items": { "type": "array", "maxItems": 100, "items": { "$ref": "#/$defs/budgetItem" } },
+        "totalTwd": { "type": "integer", "minimum": 0, "maximum": 10000000000 }
+      }
+    },
+    "budgetItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["itemId", "category", "unit", "quantity", "unitCostTwd", "subtotalTwd", "justification", "workPackageId", "ruleEvidenceStatus"],
+      "properties": {
+        "itemId": { "$ref": "#/$defs/identifier" },
+        "category": { "enum": ["PERSONNEL", "OPERATING", "EQUIPMENT", "TRAVEL", "OTHER"] },
+        "unit": { "type": "string", "minLength": 1, "maxLength": 120 },
+        "quantity": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+        "unitCostTwd": { "type": "integer", "minimum": 0, "maximum": 100000000 },
+        "subtotalTwd": { "type": "integer", "minimum": 0, "maximum": 1000000000 },
+        "justification": { "type": "string", "minLength": 8, "maxLength": 4000 },
+        "workPackageId": { "$ref": "#/$defs/identifier" },
+        "ruleEvidenceStatus": { "$ref": "#/$defs/status" }
+      }
+    },
+    "requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "status", "officialRule", "evidence", "remediation", "sourceHash"],
+      "properties": {
+        "category": { "type": "string" },
+        "status": { "$ref": "#/$defs/status" },
+        "officialRule": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "evidence": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "remediation": { "type": "string", "minLength": 1, "maxLength": 8000 },
+        "sourceHash": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["attachmentId", "label", "required", "status", "evidence"],
+      "properties": {
+        "attachmentId": { "$ref": "#/$defs/identifier" },
+        "label": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "required": { "type": "boolean" },
+        "status": { "$ref": "#/$defs/status" },
+        "evidence": { "type": "string", "minLength": 1, "maxLength": 4000 }
+      }
+    },
+    "nstcRequirementCategory": {
+      "enum": ["CALL_AND_PROGRAM", "ELIGIBILITY", "CM03_NARRATIVE", "BILINGUAL_ABSTRACT", "PRELIMINARY_EVIDENCE", "METHODS_AND_FEASIBILITY", "ETHICS_PRIVACY_DATA", "WORK_PLAN_AND_OUTPUTS", "TEAM_AND_RESOURCES", "BUDGET_AND_JUSTIFICATION", "ATTACHMENTS", "SUBMISSION_WINDOW"]
+    },
+    "moeRequirementCategory": {
+      "enum": ["CALL_AND_PROGRAM", "ELIGIBILITY", "TEACHING_PROBLEM_AND_CONTEXT", "INTERVENTION_AND_DESIGN", "LEARNING_OUTCOMES", "DATA_AND_EVALUATION", "RESEARCH_ETHICS", "IMPLEMENTATION_FIDELITY", "TEACHING_ARTIFACTS_AND_REFLECTION", "WORK_PLAN_AND_OUTPUTS", "BUDGET_AND_JUSTIFICATION", "ATTACHMENTS_AND_SUBMISSION_WINDOW"]
+    }
+  }
+}

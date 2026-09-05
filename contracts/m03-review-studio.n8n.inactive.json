@@ -1,0 +1,21 @@
+{
+  "contractVersion": "review-automation-template/1.0.0",
+  "name": "老麥 M03 審稿工作流（本機停用範本）",
+  "active": false,
+  "imported": false,
+  "executionPolicy": {
+    "humanWaitingClosesExecution": true,
+    "approvalStartsNewAction": true,
+    "transientTransportRetryMaximum": 1,
+    "validationPolicyTenantContentRetries": 0
+  },
+  "allowedPayloadKeys": ["contractVersion", "jobId", "operation", "idempotencyKey", "requestedAt", "status", "sourceHash", "resultHash"],
+  "forbiddenPayloadClasses": ["rawManuscript", "dataset", "citationText", "credential", "providerIdentity", "modelIdentity"],
+  "states": ["QUEUED", "RUNNING", "WAITING_HUMAN", "COMPLETED", "FAILED", "CANCELED"],
+  "nodes": [
+    { "id": "receive-opaque-job", "kind": "SIGNED_CALLBACK", "enabled": false },
+    { "id": "validate-idempotency", "kind": "IDEMPOTENCY_GATE", "enabled": false },
+    { "id": "request-server-stage", "kind": "SERVER_ONLY_STAGE_REQUEST", "enabled": false },
+    { "id": "close-on-human-wait", "kind": "WAITING_HUMAN_TERMINAL", "enabled": false }
+  ]
+}

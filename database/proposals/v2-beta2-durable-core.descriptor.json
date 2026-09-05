@@ -1,0 +1,45 @@
+{
+  "schemaVersion": "old-mike-v2-beta2/migration-proposal-descriptor/1",
+  "contractVersion": "old-mike-v2-beta2/2.0.0-alpha.11",
+  "status": "LOCAL_DISPOSABLE_POSTGRES_PROPOSAL_ONLY_NOT_NEON_NOT_EXECUTED_EXTERNALLY",
+  "baselineMigrations": [
+    { "path": "database/migrations/0001_better_auth_core.up.sql", "size": 1781, "sha256": "87a62b7b42094e8a41ecd1ddb050ffb3582cb87550a0bf374c314e50334ac768" },
+    { "path": "database/migrations/0002_old_mike_tenant.up.sql", "size": 3388, "sha256": "781be7081ea1be0a319496d0fd4f82fbe57fdaa42a9f663504f810eb31f01597" },
+    { "path": "database/migrations/0003_registration_invites.up.sql", "size": 1136, "sha256": "dbf7a7af07c1d071cd325cc410600dfc6ef20f682aa2cc384df4072ef7e3cbb0" },
+    { "path": "database/migrations/0004_registration_invite_revocation.up.sql", "size": 1286, "sha256": "db6d91c3c04b27c6131feaea7c144780d87e7c9e1123323a08062bcfd108ae64" },
+    { "path": "database/migrations/0005_research_workflow_phase2.up.sql", "size": 14056, "sha256": "34d1c22c0965cbe4d8f3241b80a935a6981d7fe51ee1a275bab171889fa3e1d7" },
+    { "path": "database/migrations/0006_admin_provisioned_accounts.up.sql", "size": 3051, "sha256": "8ba2a874c5b3df87227303f36799fbb1429d51fe112d1013b1824fee5f7826aa" },
+    { "path": "database/migrations/0007_topic_lab_frontier_radar.up.sql", "size": 3774, "sha256": "8dce3d2ef516be42e676c4643a14c253de167469e80f7e86cdf8d20f7f80d815" }
+  ],
+  "proposal": {
+    "up": { "path": "database/proposals/v2-beta2-durable-core.up.sql", "size": 88010, "sha256": "c62881b82d09c9ccf8c85e4f2320071e4f5ef934e0e0f153c56ca35bc9a52d8f" },
+    "verify": { "path": "database/proposals/v2-beta2-durable-core.verify.sql", "size": 7720, "sha256": "b012d76ade6cab06c04e21c96b8be58847693a2050bbaa29e64f220be3d1c20c" },
+    "down": { "path": "database/proposals/v2-beta2-durable-core.down.sql", "size": 1770, "sha256": "8fa83b0a02ac8d658731382df476e670c651d8fcaf04237fa9b083883692c0a2" }
+  },
+  "tables": [
+    "beta2_generation_jobs",
+    "beta2_generation_receipts",
+    "beta2_project_snapshots",
+    "beta2_project_events",
+    "beta2_operation_intents"
+  ],
+  "executionBoundary": {
+    "requiredEnvironmentName": "BETA2_DISPOSABLE_DATABASE_URL",
+    "forbiddenEnvironmentName": "DATABASE_URL",
+    "loopbackOnly": true,
+    "databaseNamePrefix": "old_mike_beta2_disposable_",
+    "requiredApplicationName": "old_mike_beta2_disposable",
+    "neonOrNonloopback": "FAIL_CLOSED",
+    "migrationOutsideDisposableDatabase": 0
+  },
+  "downBoundary": {
+    "nonemptyTablePolicy": "FAIL_BEFORE_ANY_DROP",
+    "tableOrder": [
+      "beta2_operation_intents",
+      "beta2_project_events",
+      "beta2_project_snapshots",
+      "beta2_generation_receipts",
+      "beta2_generation_jobs"
+    ]
+  }
+}

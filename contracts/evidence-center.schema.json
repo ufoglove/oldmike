@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "old-mike://research-portal/v1.3.2/evidence-center",
+  "type": "object", "additionalProperties": false,
+  "required": ["status", "mode", "searchStrategy", "sources", "ledger"],
+  "properties": {
+    "status": { "enum": ["success", "blocked", "error"] },
+    "mode": { "enum": ["UNVERIFIED", "BLOCKED"] },
+    "searchStrategy": { "type": "string", "maxLength": 2000 },
+    "message": { "type": "string", "maxLength": 500 },
+    "sources": { "type": "array", "items": { "$ref": "topic-lab.schema.json#/$defs/source" } },
+    "ledger": { "type": "array", "items": { "type": "object", "additionalProperties": false, "required": ["claim", "sourceTitle", "url", "verificationStatus", "sourceIdentityStatus", "claimSupportStatus", "relationship", "verificationMethod", "retrievedAt", "resolvedUrl", "verificationOutcome"], "properties": { "claim": { "type": "string", "maxLength": 1000 }, "sourceTitle": { "type": "string", "maxLength": 300 }, "url": { "type": "string", "pattern": "^https?://" }, "verificationStatus": { "enum": ["UNVERIFIED", "BLOCKED"] }, "sourceIdentityStatus": { "enum": ["SOURCE_METADATA_VERIFIED", "UNVERIFIED", "CONTRADICTED", "BLOCKED"] }, "claimSupportStatus": { "enum": ["CLAIM_VERIFIED", "CLAIM_UNVERIFIED", "CLAIM_CONTRADICTED", "BLOCKED"] }, "relationship": { "enum": ["SUPPORTS", "CONTRADICTS", "UNKNOWN"] }, "verificationMethod": { "enum": ["llm_claim_only", "trusted_api_crossref", "not_connected", "blocked"] }, "retrievedAt": { "type": "string" }, "resolvedUrl": { "type": "string", "pattern": "^https?://" }, "doi": { "type": "string" }, "verificationOutcome": { "enum": ["SOURCE_METADATA_VERIFIED", "UNVERIFIED", "CONTRADICTED", "BLOCKED"] } } } }
+  }
+}

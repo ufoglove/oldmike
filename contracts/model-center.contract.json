@@ -1,0 +1,38 @@
+{
+  "contractVersion": "old-mike-model-center/1.0.0",
+  "status": "DISABLED_LOCAL_DESIGN_ONLY",
+  "publicProfiles": [
+    {
+      "profileClass": "OLD_MIKE_DEFAULT",
+      "displayLabel": "老麥預設",
+      "credentialReference": null
+    },
+    {
+      "profileClass": "USER_CUSTOM",
+      "displayLabel": "自訂模型",
+      "credentialReference": "SERVER_ONLY_ENCRYPTED_REFERENCE_REQUIRED"
+    }
+  ],
+  "clientReadableFields": [
+    "profileClass",
+    "displayLabel",
+    "enabledState"
+  ],
+  "serverOnlyFields": [
+    "providerRoute",
+    "modelRoute",
+    "encryptedCredentialReference",
+    "credentialRotationState",
+    "auditDisclosure"
+  ],
+  "credentialPolicy": {
+    "rawKeyInBrowser": false,
+    "rawKeyInLogs": false,
+    "rawKeyInReceipt": false,
+    "rawKeyInDatabase": false,
+    "encryptedReferenceRequiresMigration": true
+  },
+  "migrationRequiredNow": false,
+  "liveConnectionAuthorized": false
+}
+

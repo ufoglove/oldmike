@@ -1,0 +1,11 @@
+BEGIN;
+DROP TRIGGER IF EXISTS user_consents_immutable_update ON user_consents;
+DROP FUNCTION IF EXISTS reject_consent_mutation();
+DROP TABLE IF EXISTS portal_rate_limits;
+DROP TABLE IF EXISTS audit_events;
+DROP TABLE IF EXISTS user_consents;
+DROP TABLE IF EXISTS project_artifacts;
+DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS workspace_members;
+DROP TABLE IF EXISTS workspaces;
+COMMIT;

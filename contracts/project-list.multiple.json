@@ -1,0 +1,49 @@
+{
+  "status": "success",
+  "projects": [
+    {
+      "project_id": "ai-education-study-0000000001",
+      "path": "projects/active/ai-education-study-0000000001",
+      "working_title": "AI 教育研究",
+      "domain": "AI × 教育",
+      "output_track": "NSTC",
+      "current_stage": "S0_INTAKE",
+      "next_gate": "define_project_charter",
+      "recommended_action": "確認 S0 Intake",
+      "evidence_status": "UNVERIFIED",
+      "risk_status": "UNVERIFIED",
+      "human_gate_status": "REQUIRED",
+      "known": ["USER_PROVIDED：研究題目"],
+      "unknown": ["尚未完成文獻查證"],
+      "assumptions": ["目前內容仍待研究者核對"],
+      "risks": ["倫理與授權尚未完成審查"],
+      "human_confirmations": ["尚待人工確認"],
+      "artifact_paths": [
+        "projects/active/ai-education-study-0000000001/PROJECT.md",
+        "projects/active/ai-education-study-0000000001/STATE.yaml"
+      ]
+    },
+    {
+      "project_id": "xr-safety-training-study-0000000002",
+      "path": "projects/active/xr-safety-training-study-0000000002",
+      "working_title": "XR 職業安全教育訓練研究",
+      "domain": "AR/VR/XR × 職業安全與教育訓練",
+      "output_track": "SCI",
+      "current_stage": "S3_DESIGN",
+      "next_gate": "confirm_study_design",
+      "recommended_action": "補齊研究設計與倫理 gate",
+      "evidence_status": "SUPPORTED",
+      "risk_status": "BLOCKED",
+      "human_gate_status": "REQUIRED",
+      "known": ["已有研究設計草案"],
+      "unknown": ["樣本數與外部效度仍待確認"],
+      "assumptions": ["資料取得仍需授權"],
+      "risks": ["涉及受試者與個資風險"],
+      "human_confirmations": ["研究者尚未完成倫理確認"],
+      "artifact_paths": [
+        "projects/active/xr-safety-training-study-0000000002/PROJECT.md",
+        "projects/active/xr-safety-training-study-0000000002/STATE.yaml"
+      ]
+    }
+  ]
+}

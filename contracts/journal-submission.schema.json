@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://old-mike.invalid/contracts/journal-submission.schema.json",
+  "title": "老麥期刊投稿核對固定結果",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "status", "manuscriptHash", "factualFit", "heuristicFit", "coverLetterDraft", "claimLedger", "uncertainties"],
+  "properties": {
+    "contractVersion": { "const": "journal-submission-studio/1.0.0" },
+    "status": { "const": "SUCCESS" },
+    "manuscriptHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+    "factualFit": { "type": "array", "minItems": 13, "maxItems": 13, "items": { "$ref": "#/$defs/factual" } },
+    "heuristicFit": { "type": "array", "minItems": 5, "maxItems": 5, "items": { "$ref": "#/$defs/heuristic" } },
+    "coverLetterDraft": { "type": "string", "minLength": 1, "maxLength": 24000 },
+    "claimLedger": { "type": "array", "maxItems": 80, "items": { "$ref": "#/$defs/claim" } },
+    "uncertainties": { "type": "array", "maxItems": 40, "items": { "type": "string", "maxLength": 1000 } }
+  },
+  "$defs": {
+    "category": { "enum": ["ARTICLE_TYPE", "TITLE_ABSTRACT_KEYWORDS", "SECTION_ORDER", "WORD_LIMITS", "REFERENCES_STYLE", "FIGURES_TABLES_SUPPLEMENTS", "REPORTING_GUIDELINE", "ETHICS_CONSENT", "DATA_CODE_AVAILABILITY", "FUNDING_CONFLICTS", "AUTHOR_CONTRIBUTIONS", "ORCID", "FILE_PACKAGE_REQUIREMENTS"] },
+    "factual": { "type": "object", "additionalProperties": false, "required": ["category", "status", "evidence", "remediation", "risk"], "properties": { "category": { "$ref": "#/$defs/category" }, "status": { "enum": ["PASS", "FAIL", "UNKNOWN", "NOT_APPLICABLE"] }, "evidence": { "type": "string", "maxLength": 3000 }, "remediation": { "type": "string", "maxLength": 2000 }, "risk": { "type": "string", "maxLength": 1000 } } },
+    "heuristic": { "type": "object", "additionalProperties": false, "required": ["dimension", "fit", "rationale", "uncertainty"], "properties": { "dimension": { "enum": ["SCOPE", "AUDIENCE", "ARTICLE_TYPE", "METHOD_FIT", "EDITORIAL_FIT"] }, "fit": { "enum": ["STRONG", "POSSIBLE", "WEAK", "UNKNOWN"] }, "rationale": { "type": "string", "maxLength": 1500 }, "uncertainty": { "type": "string", "maxLength": 1000 } } },
+    "claim": { "type": "object", "additionalProperties": false, "required": ["claimId", "supportKind", "supportId", "supportHash", "claimText", "risk"], "properties": { "claimId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{8,160}$" }, "supportKind": { "enum": ["MANUSCRIPT_PARAGRAPH", "PROJECT_FACT"] }, "supportId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{8,160}$" }, "supportHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }, "claimText": { "type": "string", "maxLength": 2000 }, "risk": { "type": "string", "maxLength": 800 } } }
+  }
+}
