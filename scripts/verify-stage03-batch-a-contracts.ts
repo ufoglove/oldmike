@@ -36,13 +36,15 @@ for (const snap of capabilitySnapshots()) {
   check(`capability_statuses_valid_${snap.provider}`, [...statuses].every((s) => valid.includes(s)), [...statuses].join(","));
 }
 
-// Consensus documented capabilities include search + ranking_venue_preference, not aggregation
+// Consensus: search/metadata/citations are live_verified ONLY for the authorized 2026-09-06 probe
 const cs = consensusCapabilitySnapshot();
-check("consensus_search_documented", cs.capabilities.search.status === "documented");
+check("consensus_search_live_verified", cs.capabilities.search.status === "live_verified", cs.capabilities.search.status);
 check("consensus_aggregation_unsupported", cs.capabilities.aggregation.status === "unsupported");
 check("consensus_ranking_venue_documented", cs.capabilities.ranking_venue_preference.status === "documented");
 check("consensus_billing_pool_set", typeof cs.billingPoolId === "string" && cs.billingPoolId.length > 0);
-check("consensus_not_live", cs.capabilities.search.status !== "live_verified", "must not claim live without authorized test");
+check("consensus_fulltext_still_unsupported", cs.capabilities.fulltext_or_chunks.status === "unsupported");
+check("consensus_references_still_unknown", cs.capabilities.references.status === "unknown");
+check("consensus_write_scope_unsupported", cs.capabilities.write_scope.status === "unsupported");
 
 // Ai4Scholar: unknown only (no adapter contract test yet)
 const ai4 = ai4ScholarCapabilitySnapshot();
