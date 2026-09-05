@@ -88,3 +88,8 @@
 - env 已設定（Zeabur server env）：OLDMIKE_LLM_TOKEN_API_URL=https://vectide.cn/v1、OLDMIKE_LLM_TOKEN_API_KEY（Token plan，len 51）、OLDMIKE_LLM_TOKEN_MODEL=deepseek-v4-pro-0813（Coding plan 保持 OLDMIKE_LLM_*）。
 - 部署 6a9bf565 RUNNING；真實調用驗證：/api/standalone/academic-language OLD_MIKE translate 200 SUCCESS（分層鏈正常）。
 - 說明：此部署同時含 V3-HOME-01 程式；為避免 /api/projects 因缺欄位失敗，正式 DB 已套用 additive migration 0033（meta 欄位；可 down 回滾）。QA 已清（projects=0/users=3 基線）。
+
+## 全站 AI 統一層級（2026-09-05 11:2x UTC）
+- executeDefaultOpenClawChatCompletion 改為分層：Token plan → Coding plan → Zeabur gateway（assist/無 route 呼叫不再直達 gateway）。chat(PROJECT_CHAT) 等帶 route 路徑原本即分層。全網站 AI（翻譯/摘要/協助/對話/審查）皆走 ① Token ② Coding ③ Gateway。
+- 部署 6a9bfb59 RUNNING（tsc0/build0；route 路徑已真實驗證 200；executeDefault 路徑程式一致，待使用者實際操作協助/對話確認）。
+- 未處理：OpenClaw 建站代理（本 assistant runtime）自身模型仍為 runtime 層設定，與網站 env 分離；若要把「架站/程式編寫」的代理調用也換成 vectide Token→Coding→Gateway，需另改 openclaw.json（待使用者確認）。
