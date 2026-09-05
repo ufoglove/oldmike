@@ -24,3 +24,11 @@
 - 流程 PASS：sign-in 200 → list 0 → preview 200 → create 201 → POST /trash 200（list 變空、trash list 1）→ POST /restore 200（list 恢復 1）。
 - 負向 PASS：第二帳號對他人專案 trash/restore/get 全 404；其 trash list 0；owner 專案不受影響。
 - 附註：http 環境 better-auth cookie 為 __Secure- 前綴，測試以手動 Cookie header 驗證（browser https 不受影響）。
+
+## 批次二：AgentJob 持久任務底座＋研究啟動摘要（v3u01_dev，2026-09-05 08:4x）
+- Migration 0032（research_documents.document_type +RESEARCH_START_SUMMARY）up/down roundtrip PASS。
+- 無 AI 金鑰路徑 PASS：create 202 QUEUED → 冪等重送回同 jobId → GET job 200（events 2）→ 最終 FAILED ai_service_not_configured，research_documents 0 列（不假成功、不污染）。
+- 冪等 PASS（同 idempotency_key 同 jobId）；列表/單筆/事件 PASS；取消不支援終態→409 預期。
+- 越權（批次一）PASS。
+- 真實 AI 正測：BLOCKED_EXTERNAL_CONFIG（局部）— sandbox 直連 gateway 路徑與 production env 不一致（code 要求 base pathname="/"、gateway 實務路由 /v1/chat/completions 才 200；isPrivateGatewayUrl 只接受根路徑 → 本機無法以同 env 完成正測）。保留待正式/staging 環境驗證；不宣稱 AI 已真實連通。
+- 隔離環境事件：誤殺 consensus MCP server（23695）→ runtime 重啟但雙實例 → 已清理；工具狀態待 gateway 重整（見 PROJECT_STATE OPEN ISSUES）。
