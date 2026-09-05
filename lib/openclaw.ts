@@ -286,34 +286,43 @@ export async function executeOpenClawChatCompletion(input: {
 // ===== 主備援熔斷保護 =====
 // vectide Coding Plan：5 小時 1000 次調用、每週 10000 次。429/402（額度）或 401/403（認證）
 // 連續失敗時開啟熔斷，避免在額度異常期間持續浪費調用或增加延遲；冷卻後自動恢復主要。
-let primaryCooldownUntilMs = 0;
-let primaryConsecutiveQuota = 0;
+// ===== 分層主備援熔斷（V3-HOME：vectide Token plan 主 → Coding plan 輔 → Zeabur gateway 備援）=====
+// vectide：Token plan（用多少算多少）與 Coding plan（訂閱額度）使用不同 API key；
+// 各層獨立熔斷，避免某一層額度/認證問題拖垮另一層。未設定 Token env 時自動維持 Coding→Gateway 原行為。
+type ProviderTierKey = "token" | "coding";
+const tierCooldown = new Map<ProviderTierKey, number>();
+const tierQuotaStreak = new Map<ProviderTierKey, number>();
 
-function primaryInCooldown(): boolean {
-  return primaryCooldownUntilMs > Date.now();
+function tierInCooldown(tier: ProviderTierKey): boolean {
+  return (tierCooldown.get(tier) ?? 0) > Date.now();
 }
 
-function primaryRecordOutcome(kind: "success" | "quota" | "auth" | "other") {
+function tierRecordOutcome(tier: ProviderTierKey, kind: "success" | "quota" | "auth" | "other") {
   if (kind === "success") {
-    primaryCooldownUntilMs = 0;
-    primaryConsecutiveQuota = 0;
+    tierCooldown.delete(tier);
+    tierQuotaStreak.delete(tier);
     return;
   }
   if (kind === "quota") {
-    primaryConsecutiveQuota += 1;
+    const streak = (tierQuotaStreak.get(tier) ?? 0) + 1;
+    tierQuotaStreak.set(tier, streak);
     // 首次額度失敗即開啟 15 分鐘冷卻；連續失敗延長（上限 4 小時）
-    const minutes = Math.min(15 * primaryConsecutiveQuota, 240);
-    primaryCooldownUntilMs = Date.now() + minutes * 60_000;
+    const minutes = Math.min(15 * streak, 240);
+    tierCooldown.set(tier, Date.now() + minutes * 60_000);
     return;
   }
   if (kind === "auth") {
-    primaryConsecutiveQuota += 1;
-    primaryCooldownUntilMs = Date.now() + 6 * 60 * 60_000; // 疑似 key 問題：停用 6 小時
+    tierQuotaStreak.set(tier, (tierQuotaStreak.get(tier) ?? 0) + 1);
+    tierCooldown.set(tier, Date.now() + 6 * 60 * 60_000); // 疑似 key 問題：停用 6 小時
     return;
   }
   // 其他失敗（上游/逾時/傳輸/形狀）：單次回退，不熔斷，避免誤傷暫時性問題
-  primaryConsecutiveQuota = 0;
+  tierQuotaStreak.delete(tier);
 }
+
+// 向後相容包裝（Coding plan 即原有主要）
+function primaryInCooldown(): boolean { return tierInCooldown("coding"); }
+function primaryRecordOutcome(kind: "success" | "quota" | "auth" | "other") { tierRecordOutcome("coding", kind); }
 
 // ===== 主備援模型上游 =====
 // 主要：外部 OpenAI-compatible API（OLDMIKE_LLM_API_URL/KEY/MODEL）；備援：Zeabur 預設 gateway。
@@ -323,15 +332,18 @@ export type PrimaryLlmAttempt =
   | { kind: "skip"; code: "not_configured" | "invalid_config" | "request_invalid" }
   | { kind: "failed"; code: "auth" | "quota" | "upstream" | "timeout" | "transport" | "shape" };
 
-export async function tryPrimaryOpenAi(input: {
+export async function tryOpenAiCompatible(input: {
+  apiUrl: string | undefined;
+  apiKey: string | undefined;
+  model: string | undefined;
   messages: OpenClawMessage[];
   sessionKey: string;
   route: OpenClawProtocolRoute;
   signal?: AbortSignal;
 }): Promise<PrimaryLlmAttempt> {
-  const apiUrl = process.env.OLDMIKE_LLM_API_URL?.trim();
-  const apiKey = process.env.OLDMIKE_LLM_API_KEY?.trim();
-  const model = process.env.OLDMIKE_LLM_MODEL?.trim();
+  const apiUrl = input.apiUrl?.trim();
+  const apiKey = input.apiKey?.trim();
+  const model = input.model?.trim();
   if (!apiUrl || !apiKey || !model) return { kind: "skip", code: "not_configured" };
   if (apiKey.length < 8 || apiKey.length > 4096 || /[\u0000-\u001f\u007f]/u.test(apiKey)) return { kind: "skip", code: "invalid_config" };
   if (!validMessages(input.messages) || typeof input.sessionKey !== "string" || input.sessionKey.length < 8 || input.sessionKey.length > 256 || /[\u0000-\u001f\u007f]/u.test(input.sessionKey)) return { kind: "skip", code: "request_invalid" };
@@ -387,6 +399,42 @@ export async function tryPrimaryOpenAi(input: {
   }
 }
 
+// Coding plan（既有 OLDMIKE_LLM_*；向後相容，作為「輔助」層）
+export async function tryPrimaryOpenAi(input: {
+  messages: OpenClawMessage[];
+  sessionKey: string;
+  route: OpenClawProtocolRoute;
+  signal?: AbortSignal;
+}): Promise<PrimaryLlmAttempt> {
+  return tryOpenAiCompatible({
+    apiUrl: process.env.OLDMIKE_LLM_API_URL,
+    apiKey: process.env.OLDMIKE_LLM_API_KEY,
+    model: process.env.OLDMIKE_LLM_MODEL,
+    messages: input.messages,
+    sessionKey: input.sessionKey,
+    route: input.route,
+    signal: input.signal,
+  });
+}
+
+// Token plan（新主要層：OLDMIKE_LLM_TOKEN_API_URL/KEY/MODEL；未設定時回 skip → 自動用 Coding plan）
+export async function tryTokenPlanOpenAi(input: {
+  messages: OpenClawMessage[];
+  sessionKey: string;
+  route: OpenClawProtocolRoute;
+  signal?: AbortSignal;
+}): Promise<PrimaryLlmAttempt> {
+  return tryOpenAiCompatible({
+    apiUrl: process.env.OLDMIKE_LLM_TOKEN_API_URL ?? process.env.OLDMIKE_LLM_API_URL,
+    apiKey: process.env.OLDMIKE_LLM_TOKEN_API_KEY,
+    model: process.env.OLDMIKE_LLM_TOKEN_MODEL ?? process.env.OLDMIKE_LLM_MODEL,
+    messages: input.messages,
+    sessionKey: input.sessionKey,
+    route: input.route,
+    signal: input.signal,
+  });
+}
+
 export async function executeDefaultOpenClawChatCompletion(
   messages: OpenClawMessage[],
   sessionKey: string,
@@ -413,20 +461,32 @@ export async function callOpenClaw(messages: OpenClawMessage[], userId: string, 
     : resolveDefaultOpenClawOperationRoute(operation);
   let result: OpenClawChatCompletionProtocolResult;
   if (route) {
-    // 主備援：先嘗試外部 OpenAI-compatible API；失敗（含額度用罄）自動回退 Zeabur 預設 gateway；
-    // 熔斷開啟期間直接走 gateway，不消耗主要 API 額度。
-    const primaryAttempt = !primaryInCooldown() && process.env.OLDMIKE_LLM_API_KEY
-      ? await tryPrimaryOpenAi({ messages, sessionKey: userId, route: effectiveRoute, signal })
+    // 分層調用：① Token plan（主要）→ ② Coding plan（輔助）→ ③ Zeabur 預設 gateway（備援）。
+    // 各層額度/認證問題獨立熔斷；未設定 Token plan env 時自動維持 Coding→Gateway 原行為。
+    const tokenAttempt = !tierInCooldown("token") && process.env.OLDMIKE_LLM_TOKEN_API_KEY
+      ? await tryTokenPlanOpenAi({ messages, sessionKey: userId, route: effectiveRoute, signal })
       : null;
-    if (primaryAttempt?.kind === "success") {
-      primaryRecordOutcome("success");
-      result = { kind: "success", content: primaryAttempt.content };
+    if (tokenAttempt?.kind === "success") {
+      tierRecordOutcome("token", "success");
+      result = { kind: "success", content: tokenAttempt.content };
     } else {
-      if (primaryAttempt) {
-        const failureCode = primaryAttempt.kind === "failed" ? primaryAttempt.code : "other";
-        primaryRecordOutcome(failureCode === "quota" ? "quota" : failureCode === "auth" ? "auth" : "other");
+      if (tokenAttempt) {
+        const failureCode = tokenAttempt.kind === "failed" ? tokenAttempt.code : "other";
+        tierRecordOutcome("token", failureCode === "quota" ? "quota" : failureCode === "auth" ? "auth" : "other");
       }
-      result = await executeOpenClawChatCompletion({ messages, sessionKey: userId, operation, route: effectiveRoute, baseUrl: process.env.OPENCLAW_BASE_URL, bearerToken: process.env.OPENCLAW_GATEWAY_TOKEN, signal });
+      const codingAttempt = !tierInCooldown("coding") && process.env.OLDMIKE_LLM_API_KEY
+        ? await tryPrimaryOpenAi({ messages, sessionKey: userId, route: effectiveRoute, signal })
+        : null;
+      if (codingAttempt?.kind === "success") {
+        tierRecordOutcome("coding", "success");
+        result = { kind: "success", content: codingAttempt.content };
+      } else {
+        if (codingAttempt) {
+          const failureCode = codingAttempt.kind === "failed" ? codingAttempt.code : "other";
+          tierRecordOutcome("coding", failureCode === "quota" ? "quota" : failureCode === "auth" ? "auth" : "other");
+        }
+        result = await executeOpenClawChatCompletion({ messages, sessionKey: userId, operation, route: effectiveRoute, baseUrl: process.env.OPENCLAW_BASE_URL, bearerToken: process.env.OPENCLAW_GATEWAY_TOKEN, signal });
+      }
     }
   } else {
     result = await executeDefaultOpenClawChatCompletion(messages, userId, operation, signal);
