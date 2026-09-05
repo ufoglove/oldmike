@@ -16,7 +16,6 @@ import AnalysisLabCenter from "./AnalysisLabCenter";
 import ManuscriptStudio from "./ManuscriptStudio";
 import ScientificReviewCenter from "./ScientificReviewCenter";
 import LanguageCenter from "./LanguageCenter";
-import PhaseProgressCards from "./PhaseProgressCards";
 import ResearchBlueprintStudio from "./ResearchBlueprintStudio";
 import EthicsCenter from "./EthicsCenter";
 import SubmissionGate from "./SubmissionGate";
@@ -31,12 +30,9 @@ import OneClickInspiration from "./OneClickInspiration";
 import TopicValidation from "./TopicValidation";
 import ReviewComplianceWorkspace from "./ReviewComplianceWorkspace";
 import ApplicationPackageStudio from "./ApplicationPackageStudio";
-import ResearchPathOverview from "./ResearchPathOverview";
-import ResearchStartSummaryCard from "./ResearchStartSummaryCard";
-import ProjectControlBar from "./ProjectControlBar";
-import ProjectTrashCta from "./ProjectTrashCta";
 import ProjectTrashCenter from "./ProjectTrashCenter";
 import OldMikeAssistControl, { OldMikeAssistWholeS0Control } from "./OldMikeAssistControl";
+import Home2WorkbenchOverview from "./home2/Home2WorkbenchOverview";
 import { canonicalDomains, outputTrackIds, researchPathStations, stageDefinitions, stageNumberFromKey, type CanonicalDomain, type OutputTrackId } from "@/lib/research-config";
 import { CONFIRMATION_PHRASE, normalizeS0Intake, type FieldErrors, type ProjectPreview, type ProjectSummary, type S0Intake } from "@/lib/project-contract";
 import type { EvidenceCenterResponse } from "@/lib/assist-contract";
@@ -435,7 +431,29 @@ async function logout() { await fetch("/api/auth/sign-out", { method: "POST", he
   }
   function handleProjectTrashed(projectId: string) { setProjects((current) => current.filter((item) => item.projectId !== projectId)); setCurrentProject((current) => (current && current.projectId === projectId ? null : current)); setActiveNav("overview"); }
   function renderOverview() {
- const currentStage = currentProject?.currentStage || "S0_INTAKE"; const workingTitle = currentProject?.workingTitle || currentProject?.title || "未命名研究專案"; const nextGate = currentProject?.nextGate || "RESEARCH_DIRECTION Human Gate 待確認"; const humanGateStatus = currentProject?.humanGateStatus || "REQUIRED"; return <><ProjectControlBar projectId={currentProject?.projectId ?? null} projectTitle={currentProject?.title || currentProject?.workingTitle || ""} onSwitch={(nextId) => { const next = projects.find((item) => item.projectId === nextId); if (next) { setCurrentProject(next); setActiveNav("overview"); } }} onNew={() => go("quick-start")} /><div className="v13-hero"><div><p className="section-kicker">{currentProject ? `PROJECT ${currentProject.projectId}` : "NO ACTIVE PROJECT · 展示資料"}</p><h2>{currentProject ? workingTitle : "從問題開始，讓老麥帶你完成研究啟動"}</h2><p>{currentProject ? `目前 ${stageTitle(currentStage)}；下一個 gate：${nextGate}` : "沒有想法也可以開始。先做前沿查證與選題比較，所有內容都會標示來源與待確認狀態。"}</p><div className="v13-inline-tags"><SourceBadge value={currentProject ? currentStage : "S0_INTAKE"} /><SourceBadge value={sourceLabel} /></div></div><div className="v13-hero-action"><strong>{currentProject ? currentStage.slice(0, 2) : "S0"}</strong><small>{currentProject ? statusText(humanGateStatus) : "INTAKE"}</small><button type="button" className="primary-button" onClick={() => go(currentProject ? "topic-lab" : "quick-start")}>{currentProject ? "繼續研究" : "開始智慧建立"}<Icon name="arrow" size={15} /></button></div></div><Panel kicker="研究生命週期" title="研究生命週期與目前 Stage" note="每次轉移都應有 project artifact 與 human gate。"><div className="v13-stage-scroll">{stageDefinitions.map((stage) => <div className={`v13-stage ${currentProject && currentStage === stage.key ? "active" : !currentProject && stage.id === "S0" ? "active" : ""}`} key={stage.key}><strong>{stage.id}</strong><span>{stage.title}</span></div>)}</div></Panel><ResearchPathOverview projectId={currentProject?.projectId ?? null} onNavigate={(navId) => go(navId as NavId)} />{currentProject ? <ResearchStartSummaryCard projectId={currentProject.projectId} inputSnapshot={{ workingTitle: workingTitle, domain: quick?.domain || currentProject?.domain || "", problemContext: quick?.researchDirection || "", targetUsers: quick?.setting || "", expectedContribution: quick?.researchDirection || "", existingData: quick?.availableData || "目前沒有已確認資料", availableData: quick?.availableData || "", methodIdea: quick?.method || "", timeline: quick?.timeline || "12 個月", constraints: quick?.ethics || "", ethicsPrivacyRisks: quick?.ethics || "" }} onNavigate={(navId) => go(navId as NavId)} /> : null}<div className="v13-two-col"><Panel kicker="證據／風險／人工門檻" title="狀態不是展示分數"><div className="v13-status-grid"><div><small>Evidence</small><strong>{statusText(currentProject?.evidenceStatus || "UNVERIFIED")}</strong><SourceBadge value={currentProject?.evidenceStatus || "UNVERIFIED"} /></div><div><small>Risk</small><strong>{statusText(currentProject?.riskStatus || "UNVERIFIED")}</strong><SourceBadge value={currentProject?.riskStatus || "UNVERIFIED"} /></div><div><small>Human Gate</small><strong>{statusText(humanGateStatus)}</strong><SourceBadge value={humanGateStatus} /></div></div><p className="v13-muted">缺少正式 metadata 時只顯示保守的未驗證與待人工確認狀態，不推定研究內容或完成度。</p></Panel><Panel kicker="可追溯交接" title="已知、未知與風險"><div className="v13-list"><p><b>已知</b>{currentProject?.known?.[0] || (currentProject ? "已確認 DB-backed Project ID 與 tenant scope" : "尚未建立正式專案")}</p><p><b>未知</b>{currentProject?.unknown?.[0] || "研究問題與外部證據尚未 fresh verification"}</p><p><b>風險</b>{currentProject?.risks?.[0] || "倫理、隱私、授權與資料治理尚未審查"}</p></div><button type="button" className="text-button" onClick={() => go(currentProject ? "evidence" : "topic-lab")}>{currentProject ? "查看 evidence ledger" : "先進入選題實驗室"} <Icon name="arrow" size={13} /></button></Panel><PhaseProgressCards projectId={currentProject?.projectId ?? null} onNavigate={(navId) => go(navId as NavId)} /><ProjectTrashCta projectId={currentProject?.projectId ?? null} projectTitle={currentProject?.title || currentProject?.workingTitle || ""} onTrashed={handleProjectTrashed} /></div></>; }
+    const currentStage = currentProject?.currentStage || "S0_INTAKE";
+    const workingTitle = currentProject?.workingTitle || currentProject?.title || "未命名研究專案";
+    const nextGate = currentProject?.nextGate || "RESEARCH_DIRECTION Human Gate 待確認";
+    const humanGateStatus = currentProject?.humanGateStatus || "REQUIRED";
+    const navId = (id: string): NavId => id as NavId;
+    const switchProject = (nextId: string) => {
+      const next = projects.find((item) => item.projectId === nextId);
+      if (next) { setCurrentProject(next); setActiveNav("overview"); }
+    };
+    return <>
+      {/* V3-HOME-02 研究工作台首頁：資訊架構、意圖入口、六群導航與功能說明 */}
+      <Home2WorkbenchOverview
+        currentProject={currentProject}
+        projects={projects}
+        onSwitchProject={switchProject}
+        onNewProject={() => go("quick-start")}
+        onNavigate={(id) => go(navId(id))}
+        onTrashed={handleProjectTrashed}
+      />
+      {/* 保留：狀態不是展示分數 + 已知/未知/風險交接（既有模組化 panel，不回歸） */}
+      <div className="v13-two-col"><Panel kicker="證據／風險／人工門檻" title="狀態不是展示分數"><div className="v13-status-grid"><div><small>Evidence</small><strong>{statusText(currentProject?.evidenceStatus || "UNVERIFIED")}</strong><SourceBadge value={currentProject?.evidenceStatus || "UNVERIFIED"} /></div><div><small>Risk</small><strong>{statusText(currentProject?.riskStatus || "UNVERIFIED")}</strong><SourceBadge value={currentProject?.riskStatus || "UNVERIFIED"} /></div><div><small>Human Gate</small><strong>{statusText(humanGateStatus)}</strong><SourceBadge value={humanGateStatus} /></div></div><p className="v13-muted">缺少正式 metadata 時只顯示保守的未驗證與待人工確認狀態，不推定研究內容或完成度。</p></Panel><Panel kicker="可追溯交接" title="已知、未知與風險"><div className="v13-list"><p><b>已知</b>{currentProject?.known?.[0] || (currentProject ? "已確認 DB-backed Project ID 與 tenant scope" : "尚未建立正式專案")}</p><p><b>未知</b>{currentProject?.unknown?.[0] || "研究問題與外部證據尚未 fresh verification"}</p><p><b>風險</b>{currentProject?.risks?.[0] || "倫理、隱私、授權與資料治理尚未審查"}</p></div><button type="button" className="text-button" onClick={() => go(currentProject ? "evidence" : "topic-lab")}>{currentProject ? "查看 evidence ledger" : "先進入選題實驗室"} <Icon name="arrow" size={13} /></button></Panel></div>
+    </>;
+  }
 
   function renderQuickStart() {
     const selectedDraft = selectedDirectionCard ? expandedS0[selectedDirectionCard.cardId] : undefined;
