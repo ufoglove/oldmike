@@ -46,3 +46,9 @@
 - V3_U01_FOUNDATION_VERIFIED ✅：trash/restore/reset 正式環境 PASS；reset 刪 40 children（含新表資料）且 literature_items 118 全保留（共用文獻不刪）。
 - 途中修正（真實測試才暴露）：① worker 需帶 route（否則只走 gateway 404→ai_service_unavailable）改 resolveModelRoute 主備援 → SUCCEEDED；② Zotero v3 不支援 itemType=-attachment%20-note 參數（400）→ 移除並 client 端過濾；③ saveZoteroConnection INSERT 參數跳號（$3 未用）→ 修正；④ binding upsert 需 collectionKey guard（NOT NULL）。
 - QA 帳號/專案已清除（共用文獻 118 筆與 Zotero 原樣）。
+
+## V3-HOME-01 首頁四功能（隔離 v3u01_dev，2026-09-05 10:3x UTC；正式部署/migration 0033 未套用，待授權）
+- Migration 0033（projects meta：meta_version/meta_updated_at/current_location/primary_goal/funding_route/publication_route/project_draft/last_payload_hash）up/down roundtrip PASS。
+- 儲存/讀取：POST /projects/{id}/save 樂觀鎖：save v1→dup 冪等（回 same version，不建重複）→ stale expectedVersion 409 version_conflict（serverVersion 回傳）→ 新版本 v2/v3；GET /projects/{id} 回 meta；GET /projects 清單含 metaUpdatedAt+progress（progress 聚合對單一專案失敗時為 null，不影響清單）。
+- trash 取消任務：回收專案後 QUEUED agent_job → CANCELLED（實測）＋worker 起跑前再檢查 trashed（程式層）。
+- UI：ProjectControlBar（未完成下拉＋搜尋＋讀取/儲存/新增＋儲存狀態＋進度/路線/路徑切換＋未儲存切換三選項＋beforeunload）；ProjectTrashCta 升級為紅色警示區＋輸入專案名稱確認＋無專案停用原因。tsc 0/build 0。

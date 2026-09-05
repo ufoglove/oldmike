@@ -11,7 +11,8 @@ export async function GET(_request: Request, context: { params: Promise<{ projec
   try {
     const identity = await resolveTenantUser(auth.session.user.id); if (!identity) return NextResponse.json({ ok: false, code: "project_not_found" }, { status: 404 });
     const project = await tenantProjectRepository.get(identity, projectId); if (!project) return NextResponse.json({ ok: false, code: "project_not_found" }, { status: 404 });
-    return NextResponse.json({ ok: true, source: "postgres", project, compatibilityWarnings: [] }, { headers: { "Cache-Control": "no-store" } });
+    const meta = await tenantProjectRepository.getProjectMeta(identity, projectId).catch(() => undefined);
+    return NextResponse.json({ ok: true, source: "postgres", project, meta: meta ?? null, compatibilityWarnings: [] }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) { if (error instanceof TenantStorageUnavailable) return NextResponse.json({ ok: false, code: "tenant_storage_not_ready" }, { status: 503 }); return NextResponse.json({ ok: false, code: "project_not_found" }, { status: 404 }); }
 }
 

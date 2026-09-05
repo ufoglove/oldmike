@@ -15,6 +15,7 @@ import {
   resolveTenantUser,
   tenantProjectRepository,
 } from "@/lib/tenant-repository";
+import { getOverviewProgress } from "@/lib/overview-progress-repository";
 
 function noStore(body: Record<string, unknown>, status: number) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -30,8 +31,18 @@ export async function GET() {
   try {
     const identity = await resolveTenantUser(auth.session.user.id);
     if (!identity) return noStore({ ok: false, code: "workspace_not_provisioned", error: "個人 Workspace 尚未完成配置。" }, 503);
-    const projects = await tenantProjectRepository.list(identity);
-    return noStore({ ok: true, source: "postgres", demo: false, projects, compatibilityWarnings: [] }, 200);
+    const projects = (await tenantProjectRepository.listSummaries(identity)) as Array<Record<string, unknown>>;
+    // 附加每專案整體進度（唯讀聚合；任一專案失敗不影響清單）
+    const withProgress = await Promise.all(projects.map(async (project) => {
+      const projectId = String(project.projectId ?? "");
+      try {
+        const progress = await getOverviewProgress({ workspaceId: identity.workspaceId, projectId, userId: identity.userId, role: identity.role });
+        return { ...project, progress: { done: progress.doneCount, total: progress.totalCount, nextKey: progress.nextKey } };
+      } catch {
+        return { ...project, progress: null };
+      }
+    }));
+    return noStore({ ok: true, source: "postgres", demo: false, projects: withProgress, compatibilityWarnings: [] }, 200);
   } catch (error) {
     if (error instanceof TenantStorageUnavailable) return storageBlocked();
     return noStore({ ok: false, code: "project_source_unavailable", error: "目前無法取得個人專案索引。" }, 503);
