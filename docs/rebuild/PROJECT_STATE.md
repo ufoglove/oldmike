@@ -83,3 +83,8 @@
 - 程式（lib/openclaw.ts）：分層熔斷（token/coding 各自 cooldown）＋ callOpenClaw route 分支改三層：tryTokenPlanOpenAi → tryPrimaryOpenAi(coding) → executeOpenClawChatCompletion(gateway)。未設 OLDMIKE_LLM_TOKEN_API_KEY 時自動維持 Coding→Gateway 原行為（向後相容）。
 - 新增 env（server-side）：OLDMIKE_LLM_TOKEN_API_URL（預設沿用 OLDMIKE_LLM_API_URL=https://vectide.cn/v1）、OLDMIKE_LLM_TOKEN_API_KEY（待使用者提供）、OLDMIKE_LLM_TOKEN_MODEL（預設沿用 deepseek-v4-pro-0813）。既有 OLDMIKE_LLM_API_KEY= Coding plan。
 - tsc0/build0；真實分層調用驗證待 Token key 設定後於正式環境執行（deploy 亦待授權）。
+
+## 混合模型層級上線（2026-09-05 11:1x UTC）
+- env 已設定（Zeabur server env）：OLDMIKE_LLM_TOKEN_API_URL=https://vectide.cn/v1、OLDMIKE_LLM_TOKEN_API_KEY（Token plan，len 51）、OLDMIKE_LLM_TOKEN_MODEL=deepseek-v4-pro-0813（Coding plan 保持 OLDMIKE_LLM_*）。
+- 部署 6a9bf565 RUNNING；真實調用驗證：/api/standalone/academic-language OLD_MIKE translate 200 SUCCESS（分層鏈正常）。
+- 說明：此部署同時含 V3-HOME-01 程式；為避免 /api/projects 因缺欄位失敗，正式 DB 已套用 additive migration 0033（meta 欄位；可 down 回滾）。QA 已清（projects=0/users=3 基線）。
