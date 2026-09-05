@@ -93,3 +93,10 @@
 - executeDefaultOpenClawChatCompletion 改為分層：Token plan → Coding plan → Zeabur gateway（assist/無 route 呼叫不再直達 gateway）。chat(PROJECT_CHAT) 等帶 route 路徑原本即分層。全網站 AI（翻譯/摘要/協助/對話/審查）皆走 ① Token ② Coding ③ Gateway。
 - 部署 6a9bfb59 RUNNING（tsc0/build0；route 路徑已真實驗證 200；executeDefault 路徑程式一致，待使用者實際操作協助/對話確認）。
 - 未處理：OpenClaw 建站代理（本 assistant runtime）自身模型仍為 runtime 層設定，與網站 env 分離；若要把「架站/程式編寫」的代理調用也換成 vectide Token→Coding→Gateway，需另改 openclaw.json（待使用者確認）。
+
+## 主要＝Token plan flash 上線（2026-09-05 20:5x UTC，deployment 6a9c807a RUNNING）
+- 需求：主要調用＝Token plan→deepseek-v4-flash；輔助（次要）＝Coding plan→deepseek-v4-pro；備援＝Zeabur 預設（openclaw/default，Deepseek v4 flash）。
+- 程式（lib/openclaw.ts 已於 ff73b30 修正）：分層順序＝① Token plan（OLDMIKE_LLM_TOKEN_*）→ ② Coding plan（OLDMIKE_LLM_*）→ ③ Zeabur gateway。此次只需改 env（不需要程式更動）。
+- env 調整（Zeabur server env，updateSingleEnvironmentVariable）：OLDMIKE_LLM_TOKEN_MODEL：deepseek-v4-pro-0813 → deepseek-v4-flash。OLDMIKE_LLM_MODEL 維持 deepseek-v4-pro-0813（Coding 輔助），OPENCLAW_MODEL=openclaw/default（備援）不變。
+- 重新上傳 zip 觸發新 deployment 6a9c807a51c5e68fdad5a8d1（BUILDING→DEPLOYING→RUNNING），新 pod 讀取更新後 env。
+- 現有 profile：主要 Token=deepseek-v4-flash、輔助 Coding=deepseek-v4-pro-0813、備援=Zeabur 預設。
