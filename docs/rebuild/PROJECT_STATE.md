@@ -56,3 +56,13 @@
 - consensus MCP 重整（gateway restart）
 1) docs/rebuild 五份文件補完（audit/scope/contracts/traceability/test-report/deploy）
 2) 差異矩陣定稿 → 3) migration 0031 撰寫（隔離驗證）→ 4) trash/restore API＋UI → 5) AgentJob 底座＋start-summary → 6) Zotero binding 稽核與最小 UI → 7) 測試報告＋授權清單
+
+
+## 交付摘要（2026-09-05 09:1x UTC；V3-U01 工程三批完成）
+- git：cb2879f(基線)→cc43114(隔離+0031)→feef793(回收筒)→d3f4e37(0032+AgentJob)→cd258f9(Zotero binding+evidence-notes)
+- Migration（未套正式）：0031（projects.trashed_at/trashed_by_user_id、zotero_project_bindings、agent_jobs、agent_job_events、evidence_notes）、0032（research_documents.document_type +RESEARCH_START_SUMMARY）
+- API（新增，未部署正式）：GET /api/projects/trash；POST /projects/{id}/trash、/restore；GET/POST /projects/{id}/agent-jobs（＋/{jobId} GET、cancel）；GET/POST /projects/{id}/evidence-notes；zotero route 擴充 bindings
+- UI（新增，未部署正式）：ProjectTrashCta（移至回收筒）、ProjectTrashCenter（回收筒+復原）、ResearchStartSummaryCard（首頁一鍵摘要＋輪詢）
+- 測試：隔離 PG15@5433 v3u01_dev＋local standalone@3100；回收筒/冪等/事件/越權/notes CRUD 全 PASS；migration 0031/0032 up/down roundtrip PASS
+- 外部：真實 AI/Zotero 正測 BLOCKED_EXTERNAL_CONFIG；consensus MCP 待 gateway restart
+- 正式部署：未執行（另需授權）
