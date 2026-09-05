@@ -100,3 +100,37 @@
 - env 調整（Zeabur server env，updateSingleEnvironmentVariable）：OLDMIKE_LLM_TOKEN_MODEL：deepseek-v4-pro-0813 → deepseek-v4-flash。OLDMIKE_LLM_MODEL 維持 deepseek-v4-pro-0813（Coding 輔助），OPENCLAW_MODEL=openclaw/default（備援）不變。
 - 重新上傳 zip 觸發新 deployment 6a9c807a51c5e68fdad5a8d1（BUILDING→DEPLOYING→RUNNING），新 pod 讀取更新後 env。
 - 現有 profile：主要 Token=deepseek-v4-flash、輔助 Coding=deepseek-v4-pro-0813、備援=Zeabur 預設。
+
+---
+
+## V3-U02-R1（第二階段整合規格，2026-09-05 22:00 UTC，engineering-local）
+規格來源：`docs/stage02/spec-v3-1.0.md`（55,776 bytes，唯一典藏副本）。角色：OpenClaw 建站工程代理。本輪**隔離實作、未正式部署/migration、未產生外部收費**；正式部署/migration/收費另需授權。
+
+### 本輪交付（四批，tsc --noEmit 0 錯誤；working tree clean）
+- 批次A（commit 58612e2）shared operation layer：migration **0034**（field_locks / requirement_issues / stage_completion_snapshots；up+down roundtrip PASS）+ `lib/stage-operation-contracts.ts` / `-repository.ts` / `field-policy-service.ts` / `stage-readiness-service.ts`；UI `StageActionBar.tsx`＋`RequirementIssuePanel.tsx`；API `/api/projects/[projectId]/stage-operation`（GET readiness / POST LOCK/UNLOCK/CHECK_WRITE/HANDOFF）。
+- 批次B（d6c10ad）exploration logic：`trend-measurement-service.ts`（T07/08/09/11）、`topic-candidate-quality-service.ts`（T12/13）、`field-assist-service.ts`（T14）。
+- 批次C（c4a6dc2）batch automation：`generic-stage-adapter.ts`（FILL_BLANKS/OPTIMIZE_UNLOCKED/FILL_AND_LOCK + `buildTopicSelectionSnapshot`）+ repo `releaseFieldLocksForProject`。TopicSelectionSnapshot contract 型別對齊。
+- 批次D（本批，未另 commit 為單一 tag，含 docs）44 項分類 + 交付文件。
+
+### 驗證證據（LIVE on 隔離 PG15 / MOCK 邏輯分列）
+- `scripts/verify-stage02-batch-a.ts`：readiness 阻擋(RQ/Gap/Contribution)+deep-link →（A1）；lock acquire v1→v2（A2）；assertWritePermitted stale 拒(A3)；IRB/p/簽名不可 AI 寫(A4)；填必填解除 blocking(A5)；冪等 handoff 同 id(A6)。**全 PASS**
+- `scripts/verify-stage02-batch-b.ts`：T07 20%,低基期 null,未知不填0；T08 metadata-update INCOMPARABLE；T09 PARTIAL；T11 validate reject forge；T12 dedup；T13 null/coverage；T14 assist+policy。**全 PASS**
+- `scripts/verify-stage02-batch-c.ts`（LIVE PG）：T24 補空白保留非空；T25 跳過鎖定；T26 AUTOMATION_POLICY；T15-17 snapshot AUTO_SELECTED_DRAFT + locks。**全 PASS**（冪等可重跑）
+- isolation：migration 0001–0034 up/down roundtrip PASS；220+ 表。**未動正式 DB、未部署正式。**
+
+### 44 項分類摘要（詳見 phase-02-test-report.md）
+- LIVE（isolated PG/logic）：T07,08,09,11,15,16,17,18,22,23,25,26,31 ＝ 13 核心
+- MOCK/logic PASS：T12,13,14,20,27,28,33,34,36(+T05?/T06 contract/T29 contract/T35部分)
+- REGRESSION（早批次 production 有據）：T01,02,04,35,37,39,40（部分）
+- BLOCKED（本輪未測/需正式外部或 Stage-3）：T03,10,19,21,30,32,38,42,43 + browser/a11y/worker/live-scholarly 各項
+- 誠實界限：**V3_U02_LIVE_SCHOLAR_SEARCH_VERIFIED 不成立**（未做真實外部檢索認可）。其餘旗標各自部分成立（見 traceability）。
+
+## 待決／授權事項（勿默認）
+1. **正式套用 migration 0034**：本輪僅於隔離 DB 驗證 up/down。上 production 前需 pg_dump 備份＋授權（additive，可 down 回滾）。
+2. **正式 zip 部署**本輪新增 route/UI：需授權後以 deploy-restored.py 上傳部署。
+3. **V3_U02_LIVE_SCHOLAR_SEARCH_VERIFIED**：需正式 env + 來源憑證後以真實 Crossref/OpenAlex/SemanticScholar 收取認可才可通過。
+4. a11y/browser 走查（T03/T24/T42/T29 browser、T30/T32/T43 等)：需實際研究者走「補題目→鎖定→補證據→前進」；未做不得宣稱使用者一定理解。
+5. 既有暴露 secret 輪換（SESSION_SECRET/DB/API key 於先前 GraphQL 回應未遮掩）仍為資安待辦。
+
+## 下一階段邊界（V3-U02-R1 完成後停止）
+**本輪結束即停止**。Stage-3「投稿導航」必須直接沿用 StageActionBar、RequirementIssuePanel、FieldAssist、Lock 與 Handoff 契約，不重新發明。
