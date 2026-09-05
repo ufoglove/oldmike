@@ -170,3 +170,12 @@
   - Consensus/Ai4Scholar LIVE 查詢：**BLOCKED**（本機 dev 無任何文獻金鑰；消耗共用月額度需使用者授權）。
   - Ai4Scholar adapter：**NOT_RUN**（repo 無 adapter；prod env 有 key 但未經契約測試）。
 - **下一步**：LIVE Consensus contract test（需授權）→ 批次 B（附件補強：Profile/雷達三分類/一鍵靈感四區/每日推薦能力）。
+
+## V3-U03-R1 批次 A LIVE Consensus 裁決（2026-09-06，使用者授權 1 次調用）
+- **授權**：使用者選 A → prod 容器既有 CONSENSUS_API_KEY 跑 1 次最小查詢（唯讀、無 DB 寫入、無 schema/部署變更）。
+- **結果（真實 LIVE）**：`GET https://api.consensus.app/v1/search` → HTTP 200、top-20（官方行為）、53,929 bytes、3,153ms、response_hash `f5720104287604b1`。
+- **端點爭議裁決**：生產程式碼既有 `/v1/search` **live 有效**；`/v1/quick_search` 不需測試（省額度）。
+- **關鍵契約發現**：欄位為 `sjr_best_quartile`（→ `metricSystem="SJR"`，絕不映射 JCR）；`study_type` 存在（study_type_filter 可行）；`takeaway`/`abstract` = ABSTRACT 層級 provider extraction（非全文已讀）；`journal_name` = ranking preference 非精確 venue。
+- **能力快照更新**：consensus 1.0.1 → search/metadata/citations = `live_verified`；fulltext/references/write_scope 保持 unsupported/unknown（誠實防護）。
+- **Commit `6a6de72`**；契約測試更新後 ALL PASS、tsc 0。
+
