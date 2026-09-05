@@ -1,0 +1,18 @@
+{
+  "contractVersion": "old-mike-v2-alpha3/ddl-descriptor/1",
+  "status": "PROPOSAL_ONLY_NOT_APPLIED",
+  "baseline": ["0001", "0002", "0003", "0004", "0005", "0006", "v2-alpha2-proposal"],
+  "tables": ["research_domain_profiles", "research_conversation_events", "research_generation_job_inputs"],
+  "extends": ["research_generation_jobs", "research_generation_results"],
+  "sha256": {
+    "up": "5f1c496cf638e1efd589cf5f387b6e43622fbf0894b9a52b2e8337d8bcab92c3",
+    "down": "78cb657a522bda201964d7cc44c69001f59a503c16ea5e42fecc09ae77ecd1ea",
+    "verify": "4c1a1156c1f58298d280a0c366661bf506a91fa5f7d768578b5525272fe9b0f9",
+    "reconcile": "c3737fc6fd9e07ddfd1f6e911847a19ca9d6f71ec478f7133447ba849b38e22c"
+  },
+  "onlineExecution": false,
+  "bytebaseExecution": false,
+  "formalResearchWrites": 0,
+  "liveConnectorCalls": 0,
+  "alpha4OrM06": "NOT_STARTED"
+}

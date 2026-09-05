@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "old-mike://research-portal/v1.5.30-c2r3/s0-suggestion-envelope",
+  "x-old-mike-authority": "lib/s0-fields.ts#S0_FIELDS",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["status", "suggestions"],
+  "properties": {
+    "status": { "enum": ["COMPLETE", "PARTIAL_REVIEW_REQUIRED"] },
+    "suggestions": {
+      "type": "object",
+      "additionalProperties": false,
+      "propertyNames": {
+        "enum": ["workingTitle", "problemContext", "targetUsers", "expectedContribution", "existingData", "availableData", "methodIdea", "timeline", "constraints", "ethicsPrivacyRisks", "unresolvedItems"]
+      },
+      "patternProperties": {
+        ".*": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["value", "status"],
+          "properties": {
+            "value": { "type": "string", "minLength": 1 },
+            "status": { "const": "AI_PROPOSED" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "old-mike://research-portal/v1.5.30-c2r4/topic-lab-model-envelope",
+  "x-old-mike-authority": "contracts/research-start.schema.json",
+  "$ref": "./research-start.schema.json"
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://oldmike-research.zeabur.app/contracts/registration-invite-artifact-v1.schema.json",
+  "title": "Old Mike private registration invitation artifact",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contractVersion",
+    "expiresAt",
+    "singleUse",
+    "portalOrigin",
+    "registrationPath",
+    "inviteCredential"
+  ],
+  "properties": {
+    "contractVersion": {
+      "const": "old-mike.registration-invite-artifact.v1"
+    },
+    "expiresAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "singleUse": {
+      "const": true
+    },
+    "portalOrigin": {
+      "type": "string",
+      "format": "uri"
+    },
+    "registrationPath": {
+      "const": "/register"
+    },
+    "inviteCredential": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{43}$"
+    }
+  }
+}

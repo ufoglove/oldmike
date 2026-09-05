@@ -1,0 +1,17 @@
+import assert from "node:assert/strict";
+import { Pool } from "pg";
+
+const url = process.env.INTEGRATION_DATABASE_URL;
+if (!url || process.env.INTEGRATION_DATABASE_DISPOSABLE !== "1" || process.env.INTEGRATION_TEST_MODE !== "1" || process.env.TEST_FIXTURE !== "1") process.exit(2);
+const parsed = new URL(url); assert.ok(["127.0.0.1", "localhost", "::1"].includes(parsed.hostname));
+const pool = new Pool({ connectionString: url, max: 2 });
+try {
+  const [documents, gates, events, otherTenant] = await Promise.all([
+    pool.query("SELECT count(*)::int AS count FROM research_documents d JOIN projects p ON p.project_id=d.project_id AND p.workspace_id=d.workspace_id WHERE p.project_id='m02-browser-project'"),
+    pool.query("SELECT count(*)::int AS count FROM research_human_gates g JOIN projects p ON p.project_id=g.project_id AND p.workspace_id=g.workspace_id WHERE p.project_id='m02-browser-project' AND g.gate_type='DOCUMENT_RELEASE'"),
+    pool.query("SELECT count(*)::int AS count FROM research_workflow_events e JOIN projects p ON p.project_id=e.project_id AND p.workspace_id=e.workspace_id WHERE p.project_id='m02-browser-project' AND e.stage_detail='M02_HUMAN_APPROVED_PROMOTION'"),
+    pool.query("SELECT count(*)::int AS count FROM research_documents WHERE project_id<>'m02-browser-project'"),
+  ]);
+  assert.equal(documents.rows[0].count, 3); assert.equal(gates.rows[0].count, 1); assert.equal(events.rows[0].count, 1); assert.equal(otherTenant.rows[0].count, 0);
+  console.log("M02_BROWSER_DB_GATE=PASS");
+} finally { await pool.end(); }

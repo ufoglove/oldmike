@@ -1,0 +1,6 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "old-mike://research-portal/v1.3/field-assist",
+  "type": "object", "additionalProperties": false, "required": ["status", "mode", "field", "action", "suggestions"],
+  "properties": { "status": { "enum": ["success", "blocked", "error"] }, "mode": { "const": "AI_PROPOSED" }, "field": { "type": "string" }, "action": { "enum": ["suggest", "options", "complete", "rewrite"] }, "suggestions": { "type": "array", "minItems": 1, "maxItems": 3, "items": { "type": "string" } }, "message": { "type": "string" } }
+}

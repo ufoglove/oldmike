@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "old-mike://research-portal/v1.5.30-c2r4-br4/research-start-two-stage",
+  "x-old-mike-authority": "lib/research-start-two-stage-contract.ts",
+  "$defs": {
+    "lane": { "enum": ["CURRENT_PRACTICE_VALUE", "EMERGING_FRONTIER", "HIGH_VALUE_GAP_OR_CONTRARIAN"] },
+    "domain": { "enum": ["AI × 教育", "AI × 職業安全與教育訓練", "AI × 環境工程與環境資源管理", "AI × 能源跨領域應用", "AR/VR/XR × 教育", "AR/VR/XR × 職業安全與教育訓練"] },
+    "outputTrack": { "enum": ["NSTC", "MOE", "SCI", "SSCI"] },
+    "card": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lane", "workingTitle", "researchQuestion", "researchValue", "mechanismTheory", "targetContext", "methodSketch", "feasibilityRisk", "domain", "outputTrack", "unknowns", "nextAction"],
+      "properties": {
+        "lane": { "$ref": "#/$defs/lane" },
+        "workingTitle": { "type": "string", "minLength": 12, "maxLength": 300 },
+        "researchQuestion": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "researchValue": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "mechanismTheory": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "targetContext": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "methodSketch": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "feasibilityRisk": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "domain": { "$ref": "#/$defs/domain" },
+        "outputTrack": { "$ref": "#/$defs/outputTrack" },
+        "unknowns": { "type": "array", "minItems": 1, "maxItems": 2, "items": { "type": "string", "minLength": 1, "maxLength": 500 } },
+        "nextAction": { "type": "string", "minLength": 1, "maxLength": 1500 }
+      }
+    },
+    "stageA": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recommendedLane", "recommendationRationale", "cards"],
+      "properties": {
+        "recommendedLane": { "$ref": "#/$defs/lane" },
+        "recommendationRationale": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "cards": { "type": "array", "minItems": 3, "maxItems": 3, "prefixItems": [{ "$ref": "#/$defs/card" }, { "$ref": "#/$defs/card" }, { "$ref": "#/$defs/card" }], "items": false }
+      }
+    },
+    "stageB": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["problemContext", "expectedContribution", "existingData", "availableData", "timeline", "constraints", "ethicsPrivacyRisks", "unresolvedItems"],
+      "properties": {
+        "problemContext": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "expectedContribution": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "existingData": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "availableData": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "timeline": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "constraints": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "ethicsPrivacyRisks": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "unresolvedItems": { "type": "string", "minLength": 1, "maxLength": 1500 }
+      }
+    }
+  },
+  "oneOf": [{ "$ref": "#/$defs/stageA" }, { "$ref": "#/$defs/stageB" }]
+}

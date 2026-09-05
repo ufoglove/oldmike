@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "old-mike://research-portal/v1.5.30-c2r4/research-start-model-envelope",
+  "x-old-mike-authority": "lib/s0-fields.ts#S0_FIELDS",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["recommendedLane", "recommendationRationale", "candidates"],
+  "properties": {
+    "recommendedLane": { "$ref": "#/$defs/lane" },
+    "recommendationRationale": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "candidates": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        { "$ref": "#/$defs/candidateCurrent" },
+        { "$ref": "#/$defs/candidateEmerging" },
+        { "$ref": "#/$defs/candidateGap" }
+      ],
+      "items": false
+    }
+  },
+  "$defs": {
+    "lane": { "enum": ["CURRENT_PRACTICE_VALUE", "EMERGING_FRONTIER", "HIGH_VALUE_GAP_OR_CONTRARIAN"] },
+    "text": { "type": "string", "minLength": 1, "maxLength": 2000 },
+    "textArray": { "type": "array", "minItems": 1, "maxItems": 8, "items": { "type": "string", "minLength": 1, "maxLength": 1000 } },
+    "s0": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workingTitle", "domain", "outputTrack", "problemContext", "targetUsers", "expectedContribution", "existingData", "availableData", "methodIdea", "timeline", "constraints", "ethicsPrivacyRisks", "unresolvedItems"],
+      "properties": {
+        "workingTitle": { "type": "string", "minLength": 1, "maxLength": 300 },
+        "domain": { "enum": ["AI × 教育", "AI × 職業安全與教育訓練", "AI × 環境工程與環境資源管理", "AI × 能源跨領域應用", "AR/VR/XR × 教育", "AR/VR/XR × 職業安全與教育訓練"] },
+        "outputTrack": { "enum": ["NSTC", "MOE", "SCI", "SSCI"] },
+        "problemContext": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "targetUsers": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "expectedContribution": { "type": "string", "minLength": 1, "maxLength": 2000 },
+        "existingData": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "availableData": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "methodIdea": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "timeline": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "constraints": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "ethicsPrivacyRisks": { "type": "string", "minLength": 1, "maxLength": 1500 },
+        "unresolvedItems": { "type": "string", "minLength": 1, "maxLength": 1500 }
+      }
+    },
+    "candidateBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lane", "workingTitle", "researchQuestion", "researchValue", "mechanismTheory", "targetContext", "contribution", "methodDesign", "dataPlan", "feasibility", "riskEthics", "evidenceStatus", "assumptions", "unresolvedItems", "nextAction", "s0Draft"],
+      "properties": {
+        "lane": { "$ref": "#/$defs/lane" },
+        "workingTitle": { "type": "string", "minLength": 12, "maxLength": 300 },
+        "researchQuestion": { "$ref": "#/$defs/text" },
+        "researchValue": { "$ref": "#/$defs/text" },
+        "mechanismTheory": { "$ref": "#/$defs/text" },
+        "targetContext": { "$ref": "#/$defs/text" },
+        "contribution": { "$ref": "#/$defs/text" },
+        "methodDesign": { "$ref": "#/$defs/text" },
+        "dataPlan": { "$ref": "#/$defs/text" },
+        "feasibility": { "$ref": "#/$defs/text" },
+        "riskEthics": { "$ref": "#/$defs/text" },
+        "evidenceStatus": { "const": "UNVERIFIED" },
+        "assumptions": { "$ref": "#/$defs/textArray" },
+        "unresolvedItems": { "$ref": "#/$defs/textArray" },
+        "nextAction": { "$ref": "#/$defs/text" },
+        "s0Draft": { "$ref": "#/$defs/s0" }
+      }
+    },
+    "candidateCurrent": { "allOf": [{ "$ref": "#/$defs/candidateBase" }, { "properties": { "lane": { "const": "CURRENT_PRACTICE_VALUE" } } }] },
+    "candidateEmerging": { "allOf": [{ "$ref": "#/$defs/candidateBase" }, { "properties": { "lane": { "const": "EMERGING_FRONTIER" } } }] },
+    "candidateGap": { "allOf": [{ "$ref": "#/$defs/candidateBase" }, { "properties": { "lane": { "const": "HIGH_VALUE_GAP_OR_CONTRARIAN" } } }] }
+  }
+}

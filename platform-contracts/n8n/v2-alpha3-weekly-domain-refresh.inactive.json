@@ -1,0 +1,14 @@
+{
+  "contractVersion": "old-mike-v2-alpha3/n8n-template/1",
+  "templateId": "weekly-domain-refresh",
+  "status": "INACTIVE_NOT_IMPORTED",
+  "trigger": "WEEKLY",
+  "target": "PORTAL_ASYNC_JOB_API_FUTURE",
+  "payloadAllowlist": ["opaqueBucketHash"],
+  "concurrency": 1,
+  "effectPolicy": "ONE_JOB_PER_BUCKET_HASH",
+  "submissionPossibleReplay": "FORBIDDEN",
+  "sourcePolling": false,
+  "rawTerms": false,
+  "credentials": false
+}

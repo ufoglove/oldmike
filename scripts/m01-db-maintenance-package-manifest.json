@@ -1,0 +1,48 @@
+{
+  "contractVersion": "old-mike.m01-db-maintenance-package.v1",
+  "localCandidate": "1.5.27",
+  "status": "UNSHIPPED_LOCAL_DESIGN_ONLY",
+  "serverOnly": true,
+  "clientExcluded": true,
+  "privateNetworkOnly": true,
+  "publicDatabasePort": "FORBIDDEN",
+  "runtimeDependency": {
+    "name": "pg",
+    "declaredVersion": "^8.23.0"
+  },
+  "files": {
+    "scripts/m01-db-maintenance-contract.mjs": {
+      "bytes": 18927,
+      "sha256": "5a1f8dad0afca49e456769a48e4de7cdc72a98f5b94d8ee13cf7af00b42c0993"
+    },
+    "scripts/m01-db-maintenance-readonly.mjs": {
+      "bytes": 607,
+      "sha256": "a7479e42af537bdeaef271edb2756570f819ba91ea3209a8deb9fe560f16a935"
+    },
+    "scripts/m01-db-maintenance-migrate-0007.mjs": {
+      "bytes": 1001,
+      "sha256": "527e2edf670c1ac0448794c7bcab66c66f307f71346daa9dc96b202a19248f42"
+    },
+    "database/migrations/0007_topic_lab_frontier_radar.up.sql": {
+      "bytes": 3774,
+      "sha256": "8dce3d2ef516be42e676c4643a14c253de167469e80f7e86cdf8d20f7f80d815"
+    },
+    "database/migrations/0007_topic_lab_frontier_radar.down.sql": {
+      "bytes": 974,
+      "sha256": "0cbb2231c3fe294da4234d56094d881bcea1706866003a3bfb3a881b15baa03d"
+    },
+    "database/migration-manifest.json": {
+      "bytes": 2669,
+      "sha256": "95312a9926924d01bd449b3d865213b9d9735c53b80a070fd2acc5d709891566"
+    }
+  },
+  "allowedEntrypoints": [
+    "scripts/m01-db-maintenance-readonly.mjs",
+    "scripts/m01-db-maintenance-migrate-0007.mjs"
+  ],
+  "forbiddenTransports": [
+    "execute-command",
+    "interactive-terminal",
+    "public-database-port"
+  ]
+}

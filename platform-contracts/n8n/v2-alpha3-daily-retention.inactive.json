@@ -1,0 +1,14 @@
+{
+  "contractVersion": "old-mike-v2-alpha3/n8n-template/1",
+  "templateId": "daily-retention",
+  "status": "INACTIVE_NOT_IMPORTED",
+  "trigger": "DAILY",
+  "target": "PORTAL_RETENTION_JOB_API_FUTURE",
+  "payloadAllowlist": ["retentionClass"],
+  "concurrency": 1,
+  "effectPolicy": "ONE_JOB_PER_POLICY_HASH",
+  "submissionPossibleReplay": "FORBIDDEN",
+  "sourcePolling": false,
+  "rawTerms": false,
+  "credentials": false
+}

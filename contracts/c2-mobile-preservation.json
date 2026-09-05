@@ -1,0 +1,11 @@
+{
+  "contractVersion": "old-mike.c2-mobile-preservation.v1",
+  "sourceArtifactClass": "IMMUTABLE_C2_PORTAL_ARCHIVE",
+  "sourceArtifactSha256": "0141e1614a0718cce60580540f24472bca2f41eeec8631275c0533a0c9354f5e",
+  "files": {
+    "components/GuidedResearchCenter.tsx": "8ef0caac536a3df70296b6d13f5537b61ec10ee68945dfddb69be8056a2ad471",
+    "app/globals.css": "f70a40175915517318c476c791dae6e2f12c7181a457c885c15a2587aeafe6cc",
+    "app/layout.tsx": "ec6a53e2de5de3592a6915fa29f13b58dad5907a4b3449d1489fa795f87dcb43",
+    "scripts/verify-mobile-overlay-c2-browser.mjs": "551f5f4c06746d685b45e153c98ceafe73c5b1a070f5a3c213bccc2b604758be"
+  }
+}

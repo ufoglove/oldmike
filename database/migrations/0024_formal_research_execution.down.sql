@@ -1,0 +1,43 @@
+-- 0024 down: Phase 10 — Formal Research Execution Center
+BEGIN;
+DROP TABLE IF EXISTS research_execution_snapshots;
+DROP TABLE IF EXISTS data_availability_checks;
+DROP TABLE IF EXISTS data_collection_reports;
+DROP TABLE IF EXISTS raw_data_lock_records;
+DROP TABLE IF EXISTS data_collection_closeouts;
+DROP TABLE IF EXISTS study_pause_records;
+DROP TABLE IF EXISTS study_amendments;
+DROP TABLE IF EXISTS data_queries;
+DROP TABLE IF EXISTS adverse_events_formal;
+DROP TABLE IF EXISTS protocol_deviations_formal;
+DROP TABLE IF EXISTS participant_withdrawals;
+DROP TABLE IF EXISTS follow_up_records;
+DROP TABLE IF EXISTS raw_data_manifest_entries;
+DROP TABLE IF EXISTS raw_data_assets;
+DROP TABLE IF EXISTS data_ingestion_batches;
+DROP TABLE IF EXISTS ai_experiment_runs;
+DROP TABLE IF EXISTS event_log_batches;
+DROP TABLE IF EXISTS sensor_collection_records;
+DROP TABLE IF EXISTS qualitative_collection_records;
+DROP TABLE IF EXISTS source_data_corrections;
+DROP TABLE IF EXISTS research_form_submissions;
+DROP TABLE IF EXISTS instrument_administrations;
+DROP TABLE IF EXISTS intervention_delivery_records;
+DROP TABLE IF EXISTS session_activities;
+DROP TABLE IF EXISTS study_sessions;
+DROP TABLE IF EXISTS blinding_records;
+DROP TABLE IF EXISTS allocation_records;
+DROP TABLE IF EXISTS participant_identity_vault;
+DROP TABLE IF EXISTS participant_study_records;
+DROP TABLE IF EXISTS consent_records;
+DROP TABLE IF EXISTS eligibility_screenings;
+DROP TABLE IF EXISTS recruitment_campaigns;
+DROP TABLE IF EXISTS study_team_assignments;
+DROP TABLE IF EXISTS research_sites;
+DROP TABLE IF EXISTS study_activation_records;
+DROP TABLE IF EXISTS formal_studies;
+
+ALTER TABLE research_human_gates DROP CONSTRAINT research_human_gates_gate_type_check;
+ALTER TABLE research_human_gates ADD CONSTRAINT research_human_gates_gate_type_check
+  CHECK (gate_type IN ('EVIDENCE_VERIFICATION', 'CLAIM_SUPPORT', 'RESULTS_RELEASE', 'DOCUMENT_RELEASE', 'ARCHIVE_RELEASE', 'RESEARCH_DIRECTION', 'BLUEPRINT_RELEASE', 'GAP_AND_NOVELTY_RELEASE', 'THEORY_AND_MECHANISM_RELEASE', 'RESEARCH_DESIGN_AND_ANALYSIS_PLAN_RELEASE', 'JOURNAL_RESEARCH_PLAN_RELEASE', 'NSTC_PROPOSAL_DRAFT_RELEASE', 'MOE_TPR_PROPOSAL_DRAFT_RELEASE', 'ETHICS_SCOPE_DETERMINED', 'ETHICS_PACKAGE_PREPARED', 'NSTC_INTERNAL_REVIEW_PASSED', 'NSTC_COMPLIANCE_PASSED', 'NSTC_APPLICATION_PACKAGE_READY', 'MOE_TPR_ELIGIBILITY_PASSED', 'MOE_TPR_INTERNAL_REVIEW_PASSED', 'MOE_TPR_COMPLIANCE_PASSED', 'MOE_TPR_APPLICATION_PACKAGE_READY', 'INSTRUMENTS_AND_PROTOCOL_APPROVED', 'PILOT_EXECUTION_AUTHORIZED', 'PILOT_AND_PROTOCOL_VALIDATED', 'FORMAL_STUDY_EXECUTION_READY'));
+COMMIT;

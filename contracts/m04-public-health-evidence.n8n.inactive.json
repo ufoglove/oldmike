@@ -1,0 +1,20 @@
+{
+  "contractVersion": "public-health-evidence-template/1.0.0",
+  "name": "老麥 Portal 公開健康證據（本機停用範本）",
+  "active": false,
+  "imported": false,
+  "trigger": "SCHEDULED_BOUNDED_PUBLIC_GET_AFTER_SEPARATE_APPROVAL",
+  "allowedPaths": ["HEALTH", "RELEASE_IDENTITY", "LOGIN", "CLOSED_REGISTRATION"],
+  "allowedStoredFields": ["observedAt", "statusClass", "version", "releaseHash", "healthGate", "identityGate", "loginGate", "registrationGate"],
+  "forbiddenStoredFields": ["body", "header", "cookie", "token", "hostname", "url", "formalData", "researchContent"],
+  "retention": { "success": "NONE_AFTER_AGGREGATE", "errors": "SANITIZED_168H_MAX_5000_SHARED_BASELINE" },
+  "failureNotification": "SANITIZED_GATE_ENUM_TO_PORTAL_OPERATOR",
+  "cost": "NO_NEW_PAID_SERVICE_EXPECTED_REQUIRES_APPROVAL_IF_NONZERO",
+  "rollback": "DISABLE_WORKFLOW_AND_REMOVE_SCHEDULE",
+  "nodes": [
+    { "id": "schedule", "kind": "DISABLED_SCHEDULE", "enabled": false },
+    { "id": "bounded-public-get", "kind": "GET_ONLY_NO_COOKIES", "enabled": false },
+    { "id": "sanitize", "kind": "ALLOWLIST_BITMAP", "enabled": false },
+    { "id": "store-control-plane-evidence", "kind": "NEON_OPAQUE_METADATA_ONLY", "enabled": false }
+  ]
+}

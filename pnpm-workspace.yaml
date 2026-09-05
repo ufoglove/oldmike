@@ -1,0 +1,2 @@
+minimumReleaseAgeExclude:
+  - next@16.3.1

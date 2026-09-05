@@ -1,0 +1,51 @@
+{
+  "status": "success",
+  "projects": [
+    {
+      "project_id": "vr-63bc7bcef3",
+      "path": "/home/node/.openclaw/workspace/projects/active/vr-63bc7bcef3",
+      "working_title": "VR應用於職業安全教育訓練",
+      "domain": "AR/VR/XR × 職業安全與教育訓練",
+      "output_track": "NSTC",
+      "current_stage": "S0_INTAKE",
+      "next_gate": "S1_SCOUT_scope_review_with_ethics_confirmation",
+      "recommended_action": "進入 S1_SCOUT：先確認校內倫理審查適用性與所需文件，同時鎖定目標學生族群、樣本數與具體高危險訓練情境，再進行 NSTC 徵求資格查證。",
+      "evidence_status": "unverified",
+      "risk_status": "high",
+      "human_gate_status": "pending",
+      "known": [
+        "專案已建立並進入 S0_INTAKE（使用者確認）",
+        "主題為 VR 應用於職業安全教育訓練",
+        "NSTC 提案，3 年，總經費約 150 萬"
+      ],
+      "unknown": [
+        "校內倫理審查是否適用、所需文件與時程",
+        "目標學生族群與預期樣本數",
+        "前後測資料是否已存在與問卷信效度依據",
+        "具體高危險訓練情境",
+        "VR 外包廠商與預算分配",
+        "NSTC 徵求類別、資格與格式"
+      ],
+      "assumptions": [
+        "實體職安訓練危險性高（使用者陳述，UNVERIFIED）",
+        "VR 可提供安全的高危訓練環境（HYPOTHESIS，待驗證）",
+        "設計傾向介入前後測（未確認）"
+      ],
+      "risks": [
+        "倫理、隱私與授權未完成審查",
+        "資料可用性未確認",
+        "範圍未鎖定導致設計與樣本數無法決定",
+        "VR 外包品質、時程與成本風險",
+        "NSTC 徵求資格或格式不符風險"
+      ],
+      "human_confirmations": [
+        "create_project_approved: 使用者確認建立本專案",
+        "待確認：倫理審查適用性、目標族群與樣本數、資料來源、高危險情境、外包廠商、NSTC 徵求類別"
+      ],
+      "artifact_paths": [
+        "/home/node/.openclaw/workspace/projects/active/vr-63bc7bcef3/PROJECT.md",
+        "/home/node/.openclaw/workspace/projects/active/vr-63bc7bcef3/STATE.yaml"
+      ]
+    }
+  ]
+}

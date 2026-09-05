@@ -1,0 +1,78 @@
+{
+  "schemaId": "old-mike-v2-beta2/product-acceptance-contract/4",
+  "contractId": "old-mike-v2-beta2/product-acceptance/4",
+  "version": 4,
+  "productContract": "old-mike-v2-beta2/2.0.0-alpha.11",
+  "status": "STABLE_PRODUCT_OWNED_LOCAL_ACCEPTANCE",
+  "trustCeiling": "LOCAL_PRODUCT_ACCEPTANCE_PASS_NOT_PROFESSOR_UAT",
+  "scope": {
+    "sourceJourney": "PARTIAL_MATERIAL",
+    "providerRuntime": "LOCAL_DETERMINISTIC_FIXTURE_ONLY",
+    "durableDatabase": "LOOPBACK_DISPOSABLE_POSTGRES_ONLY",
+    "formalResearchWrites": 0
+  },
+  "canonicalHashRules": {
+    "algorithm": "SHA256",
+    "json": "UTF8_LEXICOGRAPHIC_OBJECT_KEYS_ARRAY_ORDER_PRESERVED_NO_WHITESPACE",
+    "material": {
+      "contentByteLength": "UTF8_ORIGINAL_JAVASCRIPT_STRING_BYTE_LENGTH",
+      "contentHashPreimage": "UTF8_JSON_STRINGIFY_ORIGINAL_JAVASCRIPT_STRING",
+      "contentHash": "SHA256_CONTENT_HASH_PREIMAGE",
+      "originalContent": "EXACT_JS_STRING_AND_ORDER_PRESERVED",
+      "normalization": "NO_TRIM_NO_NFC_NO_CASE_FOLD_NO_ALIAS_NO_FALLBACK"
+    }
+  },
+  "controlIds": {
+    "loginEmail": "v2-beta2-login-email",
+    "loginPassword": "v2-beta2-login-password",
+    "loginSubmit": "v2-beta2-login-submit",
+    "projectWorkspace": "v2-beta2-project-workspace",
+    "materialMode": "v2-beta2-material-mode",
+    "materialItem": "v2-beta2-material-item",
+    "materialKind": "v2-beta2-material-kind",
+    "materialTitle": "v2-beta2-material-title",
+    "materialContent": "v2-beta2-material-original-content",
+    "generate": "v2-beta2-generate",
+    "directionList": "v2-beta2-direction-list",
+    "direction": "v2-beta2-direction",
+    "s0": "v2-beta2-s0",
+    "assist": "v2-beta2-assist",
+    "saveSelection": "v2-beta2-save-selection",
+    "saveWorkspace": "v2-beta2-save-workspace",
+    "reloadResume": "v2-beta2-reload-resume",
+    "reconciliation": "v2-beta2-reconciliation",
+    "humanGate": "v2-beta2-human-gate",
+    "status": "v2-beta2-status"
+  },
+  "materialControlIdentity": {
+    "firstMaterialId": "beta2-material-01",
+    "materialIdTemplate": "beta2-material-{zero-padded-monotonic-session-ordinal}",
+    "itemAcceptanceIdTemplate": "v2-beta2-material-item:{materialId}",
+    "kindAcceptanceIdTemplate": "v2-beta2-material-kind:{materialId}",
+    "titleAcceptanceIdTemplate": "v2-beta2-material-title:{materialId}",
+    "contentAcceptanceIdTemplate": "v2-beta2-material-original-content:{materialId}",
+    "nonReuseRule": "MONOTONIC_SESSION_ORDINAL_NEVER_DERIVED_FROM_CURRENT_COUNT"
+  },
+  "executionAuthority": {
+    "oneRunScope": "EXACT_PRODUCT_BUNDLE_AND_RESOLVED_WORKSPACE_AUTHORITY_ROOT",
+    "claimRule": "ATOMIC_CREATE_NEW_BEFORE_PORT_DATABASE_OR_CHILD",
+    "environmentRule": "ORDERED_NONSECRET_VALUES_AND_CHILD_FINGERPRINT_EQUALITY",
+    "terminalRule": "STARTED_CONVERGES_TO_PASS_FAIL_BLOCKED_OR_EXTERNAL_BLOCKED",
+    "observationRule": "APPEND_ONLY_HASH_BOUND_LEDGER_WITH_DATABASE_PARITY",
+    "cleanupRule": "REGISTERED_PROCESS_LISTENER_AND_OWNED_ROOT_INVENTORY"
+  },
+  "journeyRequirements": [
+    "AUTHENTICATED_PROJECT",
+    "PARTIAL_MATERIAL_BYTES",
+    "THREE_DIRECTIONS_ONE_RECOMMENDED",
+    "COMPLETE_13_FIELD_S0",
+    "ASSIST_PREVIEW_APPLY_UNDO_SAVE",
+    "DURABLE_RELOAD_RELOGIN",
+    "COMPLETION_UNKNOWN_LOOKUP_ONLY",
+    "HUMAN_GATE_ZERO_FORMAL_WRITE"
+  ],
+  "professorReview": {
+    "automatedVerdictForbidden": true,
+    "visibleMeaning": "Professor manually reviews one frozen product hash after a separate environment preflight"
+  }
+}

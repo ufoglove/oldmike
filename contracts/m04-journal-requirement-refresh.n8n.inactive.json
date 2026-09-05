@@ -1,0 +1,21 @@
+{
+  "contractVersion": "journal-requirement-refresh-template/1.0.0",
+  "name": "老麥 M04 期刊要求更新（本機停用範本）",
+  "active": false,
+  "imported": false,
+  "trigger": "SCHEDULED_BOUNDED_PUBLIC_HTTPS_GET_AFTER_SEPARATE_APPROVAL",
+  "allowedDomains": "OFFICIAL_PUBLISHER_OR_JOURNAL_ALLOWLIST_ONLY",
+  "allowedPayloadKeys": ["jobId", "projectRef", "sourceRef", "operation", "idempotencyKey", "requestedAt", "status", "sourceHash", "resultHash"],
+  "forbiddenPayloadClasses": ["rawManuscript", "dataset", "citationText", "credential", "providerIdentity", "modelIdentity", "formalRecord"],
+  "networkPolicy": { "method": "GET", "javascript": false, "login": false, "cookies": false, "privateNetwork": false, "redirect": "error", "maximumBytes": 1000000, "timeoutMs": 10000 },
+  "retention": { "formalContentAuthority": "PORTAL_ONLY", "automationData": "OPAQUE_STATUS_TIMESTAMPS_HASHES_ONLY", "success": "NONE_AFTER_ACK", "errors": "SANITIZED_168H_MAX_5000_SHARED_BASELINE" },
+  "failureNotification": "SANITIZED_GATE_ENUM_TO_PORTAL_OPERATOR",
+  "cost": "NO_NEW_PAID_SERVICE_EXPECTED_REQUIRES_APPROVAL_IF_NONZERO",
+  "rollback": "DISABLE_WORKFLOW_AND_REVOKE_ENDPOINT_REFERENCE",
+  "nodes": [
+    { "id": "schedule", "kind": "DISABLED_SCHEDULE", "enabled": false },
+    { "id": "source-policy", "kind": "OFFICIAL_SOURCE_ALLOWLIST", "enabled": false },
+    { "id": "bounded-get", "kind": "PUBLIC_HTTPS_GET", "enabled": false },
+    { "id": "store-sanitized-observation", "kind": "OPAQUE_STATUS_HASH_ONLY", "enabled": false }
+  ]
+}

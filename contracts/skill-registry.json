@@ -1,0 +1,44 @@
+{
+  "contractVersion": "old-mike-skill-registry/1.0.0",
+  "status": "PINNED_LOCAL_REGISTRY_NOT_ACTIVATED",
+  "licensePolicy": "EXPLICIT_MIT_ONLY",
+  "unknownLicenseDisposition": "QUARANTINED",
+  "installationsPerformed": 0,
+  "skills": [
+    { "id": "scientific-brainstorming", "source": "K-Dense Inc.", "license": "MIT", "version": "1.0", "sha256": "76682cf02fae6b5c4ef78fe333112abea41ee3367f051cdb578c763115db59dc", "dataEgress": "NONE_BY_DEFAULT", "toolPolicy": "NO_TOOL_WITHOUT_TASK_ALLOWLIST", "enabledByDefault": false },
+    { "id": "hypothesis-generation", "source": "K-Dense Inc.", "license": "MIT", "version": "1.0", "sha256": "08e95383c0602d16cf03bbdf4ef17971618712fae008fdb74fd3d7435d882d7f", "dataEgress": "NONE_BY_DEFAULT", "toolPolicy": "NO_TOOL_WITHOUT_TASK_ALLOWLIST", "enabledByDefault": false },
+    { "id": "scientific-critical-thinking", "source": "K-Dense Inc.", "license": "MIT", "version": "1.1", "sha256": "5ebdbffe1712db56de8213705a8cbb9b3bec0a45a766e8dcdb77a5c27dcd2a62", "dataEgress": "NONE_BY_DEFAULT", "toolPolicy": "NO_TOOL_WITHOUT_TASK_ALLOWLIST", "enabledByDefault": false },
+    { "id": "literature-review", "source": "K-Dense Inc.", "license": "MIT", "version": "1.0", "sha256": "2fe7882ebe38ff0e32a0069dd9faa0f2061a9249ccc0609d8653f7e30bb7eb46", "dataEgress": "PUBLIC_QUERY_ONLY_EXACT_APPROVAL", "toolPolicy": "OFFICIAL_PUBLIC_SOURCE_ALLOWLIST", "enabledByDefault": false },
+    { "id": "research-lookup", "source": "K-Dense Inc.", "license": "MIT", "version": "1.0", "sha256": "fe532e607274ac4831c938bac61d5275f909ed9b5241e26cb78dc22ca9d0b360", "dataEgress": "PUBLIC_QUERY_ONLY_EXACT_APPROVAL", "toolPolicy": "NO_EXTERNAL_BACKEND_UNLESS_EXACTLY_APPROVED", "enabledByDefault": false },
+    { "id": "scientific-writing", "source": "K-Dense Inc.", "license": "MIT", "version": "1.0", "sha256": "47958f7ab5ba251f54cd05d0589850060118ebad50a839e52f01143dca226e96", "dataEgress": "NONE_BY_DEFAULT", "toolPolicy": "PORTAL_FORMAL_DATA_READ_ONLY", "enabledByDefault": false },
+    { "id": "venue-templates", "source": "K-Dense Inc.", "license": "MIT", "version": "1.0", "sha256": "f6b8a8a05b2fd8812c7696c2b5d5ddfed53aeb3616d551a9dee938fb0f2564a4", "dataEgress": "NONE_BY_DEFAULT", "toolPolicy": "HASH_LOCKED_TEMPLATE_ONLY", "enabledByDefault": false },
+    { "id": "research-grants", "source": "K-Dense Inc.", "license": "MIT", "version": "1.1", "sha256": "4814ed739b2b7323a22e433aba0871c1548308af71fcb8165ea5952676e10818", "dataEgress": "NONE_BY_DEFAULT", "toolPolicy": "PORTAL_FACTS_ONLY", "enabledByDefault": false },
+    { "id": "peer-review", "source": "K-Dense Inc.", "license": "MIT", "version": "1.0", "sha256": "bb87a279f5d9d154c2cffbd69250736ff72d1d8547e16282f2885f41a2d2049d", "dataEgress": "NONE_BY_DEFAULT", "toolPolicy": "NO_FORMAL_RECORD_WRITE", "enabledByDefault": false },
+    { "id": "scholar-evaluation", "source": "K-Dense Inc.", "license": "MIT", "version": "1.0", "sha256": "b4d89cb12fe65595602b6bcf4daeaf211aa2353410e9069ac9f70b9bfb1b78b2", "dataEgress": "PUBLIC_QUERY_ONLY_EXACT_APPROVAL", "toolPolicy": "NO_PERSON_RANKING_WITHOUT_POLICY_REVIEW", "enabledByDefault": false },
+    { "id": "exploratory-data-analysis", "source": "K-Dense Inc.", "license": "MIT", "version": "1.0", "sha256": "6ed9b405f5d55bc52db2cd92429f8465a072ed2cc60892ca710c6f3a8f6438ff", "dataEgress": "ISOLATED_INPUT_ONLY", "toolPolicy": "ISOLATED_CODE_DATA_WORKER", "enabledByDefault": false },
+    { "id": "statistical-analysis", "source": "K-Dense Inc.", "license": "MIT", "version": "1.0", "sha256": "089a7e3a54b4072d5978cbfe3325ad3cf7d8a3fd3ed41b52f002fedd77485f0a", "dataEgress": "ISOLATED_INPUT_ONLY", "toolPolicy": "ISOLATED_CODE_DATA_WORKER", "enabledByDefault": false },
+    { "id": "scientific-visualization", "source": "K-Dense Inc.", "license": "MIT", "version": "1.0", "sha256": "e715bbf0663e031fb5801605c13425cb47d9fd60126b90e7228ee3d670d16e47", "dataEgress": "ISOLATED_INPUT_ONLY", "toolPolicy": "ISOLATED_CODE_DATA_WORKER", "enabledByDefault": false },
+    { "id": "citation-management", "source": "K-Dense Inc.", "license": "MIT", "version": "1.0", "sha256": "6d6296be0436c2d1f123eddb5978ba3ea403b8fe8778012d30ef905360aa27da", "dataEgress": "PUBLIC_QUERY_ONLY_EXACT_APPROVAL", "toolPolicy": "DOI_METADATA_ONLY_WITH_SOURCE_ALLOWLIST", "enabledByDefault": false },
+    { "id": "academic-humanizer", "source": "local MIT skill catalog", "license": "MIT", "version": "0.3.3", "sha256": "3bf0b3ba19502fd1bb0cc687f94e154e17af40682aa7d7b3d9d7b1bc4e977b26", "dataEgress": "NONE_BY_DEFAULT", "toolPolicy": "NO_AI_DETECTION_BYPASS", "enabledByDefault": false },
+    { "id": "speak-human-tw", "source": "local MIT skill catalog", "license": "MIT", "version": "1.4.0", "sha256": "a50ab91b6235eac310b3ab000d7d980f8b8364722badd4383cc99046edbea496", "dataEgress": "NONE_BY_DEFAULT", "toolPolicy": "TEXT_TRANSFORM_ONLY", "enabledByDefault": false }
+  ],
+  "internalContracts": [
+    { "id": "old-mike-task-gateway-contract", "source": "lib/task-gateway-contract.ts", "license": "INTERNAL", "version": "1.2.0", "sha256": "80231de0ada43e4bb68012e040d5d5aecd2c6f8004eb48052278b4277ed81c46" },
+    { "id": "old-mike-task-gateway-runtime", "source": "lib/task-gateway.ts", "license": "INTERNAL", "version": "1.1.0", "sha256": "51f65a4043f9c7dbcedcd894291e89e142ddc5072ea14946a7e104add5e6199e" },
+    { "id": "old-mike-private-responses-adapter", "source": "lib/task-gateway-responses-adapter.ts", "license": "INTERNAL", "version": "1.0.0", "sha256": "7a26f01a80b05970b6be913b704aa6e92f47df5db279362ddab5018681ae34eb" },
+    { "id": "old-mike-task-context-repository", "source": "lib/task-context-repository.ts", "license": "INTERNAL", "version": "1.0.0", "sha256": "37f5f05a445e2e531b0710afaa8e2b914bff6097fbd6edc6da218133d44cf041" },
+    { "id": "old-mike-foundation-runtime-contract", "source": "lib/foundation-runtime-contract.ts", "license": "INTERNAL", "version": "1.0.0", "sha256": "26617dbe7984c62ee0ca8bf0b8da279b14c6ef197730c0e0c1bec6c8af0669f5" },
+    { "id": "old-mike-scholarly-fixture-adapters", "source": "lib/topic-lab-scholarly-adapters.ts", "license": "INTERNAL", "version": "1.0.0", "sha256": "075529028fdfdf01f19843c09c4b98970bd41174a10fb6f17e0dba12c9074ba5" },
+    { "id": "old-mike-academic-language-contract", "source": "lib/academic-language-contract.ts", "license": "INTERNAL", "version": "1.1.0", "sha256": "d01d58f5c27049c66d3e165bb0c111127b134a95772b858e4e50e0ff964711be" },
+    { "id": "old-mike-master-blueprint", "source": "../RESEARCH_OS_MASTER_BLUEPRINT_V1.md", "license": "INTERNAL", "version": "1.2.0", "sha256": "8abfbb0177396b9f6f53160381d45c0dd602aed0d8ce4bdb57056fc2869f3574" },
+    { "id": "old-mike-proposal-studio-contract", "source": "lib/proposal-studio-contract.ts", "license": "INTERNAL", "version": "1.0.0", "sha256": "74a094dd70dec6e815076abe5de04250d68d41d7bd7de2eb14113e33e511dda0" },
+    { "id": "old-mike-proposal-studio-repository", "source": "lib/proposal-studio-repository.ts", "license": "INTERNAL", "version": "1.0.0", "sha256": "84ebc9179827150d1cd14e1346a7f5675aeb42abaa02b08333fff186073a233a" },
+    { "id": "old-mike-proposal-studio-guidance", "source": "lib/proposal-studio-guidance.ts", "license": "INTERNAL", "version": "1.0.0", "sha256": "e138e8d38916f30ee7f3302dc027050012d91b478133c1fa2e74d384523a7564" },
+    { "id": "old-mike-proposal-studio-schema", "source": "contracts/proposal-studio.schema.json", "license": "INTERNAL", "version": "1.0.0", "sha256": "327fb894bd2a79475440db32826370a68cd77eedab929657cc86a6d202f46f29" },
+    { "id": "old-mike-proposal-studio-fixtures", "source": "contracts/proposal-studio.fixture-suite.json", "license": "INTERNAL", "version": "1.0.0", "sha256": "99c24f434dec2fbadc0ff0bbdf2bcfdb55b28219ccce97474a195d0efa6f79c5" }
+  ],
+  "quarantine": {
+    "policy": "ANY_UNCLEAR_OR_NON_MIT_LICENSE",
+    "entries": []
+  }
+}
