@@ -4,7 +4,10 @@
 範圍基準：docs/rebuild/phase-01-scope.md（V3-U01 唯一範圍）。本檔供對話中斷後恢復，不把聊天當唯一記憶。
 
 ## 目前 commit / 來源
-- /home/node/dev/repo 非 git repo（git init 未執行；交付前建議 git init＋首個 commit）。以 tgz 快照為版本基線：v3u01-baseline-SOURCE-20260905.tgz（本階段開始前）。
+- /home/node/dev/repo 已 git init（main）：
+  - cb2879f V3-U01 baseline（重建樹＋本日前修復）
+  - cc43114 V3-U01 isolated env＋migration 0031（up/down roundtrip PASS）
+- tgz 快照：v3u01-baseline-SOURCE-20260905.tgz（git 建立前）。
 - production 最後部署：6a9bc0aa918d24b236ebc1cc RUNNING（09-05 07:1x，reset/GapNoveltyLab/BlueprintStudio 修復）。本階段「不動正式網站替換」。
 
 ## 已完成能力（真實測試）
@@ -23,6 +26,12 @@
 - Zotero Project–Collection binding 分開保存（現況：zotero_bindings 表不存在）。
 - docs/rebuild/*（本批已建骨架：architecture-audit/phase-01-scope/data-contracts/requirements-traceability/phase-01-test-report/deployment-and-rollback/PROJECT_STATE）。
 - git 基線與 DB pg_dump 備份驗證（待授權：見 OPEN QUESTIONS）。
+
+## 隔離測試環境（已建立，2026-09-05 08:0x）
+- sandbox 本機 PostgreSQL 15.19 @127.0.0.1:5433（data dir /home/node/dev/v3u01-pg；user postgres trust）
+- DB v3u01_dev：基底＝repo migrations 0001–0025（部分後期鏈因重建樹缺檔/順序問題中斷，見 R1）＋從 production 以唯讀目錄查詢複製 4 張文獻/Zotero 表（literature_items/project_literature_links/citation_sources/zotero_connections，DDL 存 /home/node/dev/v3u01-literature-tables.sql）
+- migration 0031 up/down roundtrip 於 v3u01_dev 驗證 PASS（目前 re-UP 保留環境）
+- production 為 PostgreSQL 18.6；sandbox pg_dump 15 無法直接 dump（version mismatch），pgdg repo 不可達；未對 production 做任何寫入
 
 ## 基線（2026-09-05 07:5x 實測，唯一 DB db=zeabur，host service-6a8154c1…）
 - schema_migrations 記錄到 0030_external_language_provider_gateway（09-04 05:49 applied，recorded_by=check-migrations --record-all）
