@@ -18,3 +18,9 @@
 
 ## 工具未配置
 - 無 CI/lint 閘；無 Playwright 自動化於本環境重跑（先前 QA-walk 曾用）；如實列出不稱「預期通過」。
+
+## 批次一：回收筒（軟刪除/復原）隔離整合測試（v3u01_dev，2026-09-05 08:2x）
+- 環境：sandbox 本機 PG15 @127.0.0.1:5433 ＋ local Next standalone @127.0.0.1:3100（DATABASE_URL=v3u01_dev；正式環境零接觸）。
+- 流程 PASS：sign-in 200 → list 0 → preview 200 → create 201 → POST /trash 200（list 變空、trash list 1）→ POST /restore 200（list 恢復 1）。
+- 負向 PASS：第二帳號對他人專案 trash/restore/get 全 404；其 trash list 0；owner 專案不受影響。
+- 附註：http 環境 better-auth cookie 為 __Secure- 前綴，測試以手動 Cookie header 驗證（browser https 不受影響）。

@@ -6,6 +6,7 @@ export type ProjectRecord = {
   title: string;
   status: "ACTIVE" | "LEGACY_UNCLAIMED";
   legacy: boolean;
+  trashedAt?: string | null;
 };
 
 export type TenantUser = { userId: string; workspaceId: string; role: WorkspaceRole };
@@ -26,7 +27,7 @@ export function canAccessProject(fixture: TenantFixture, identity: TenantUser, p
 }
 
 export function listProjectsForUser(fixture: TenantFixture, identity: TenantUser) {
-  return fixture.projects.filter((project) => !project.legacy && project.workspaceId === identity.workspaceId && project.ownerUserId === identity.userId);
+  return fixture.projects.filter((project) => !project.legacy && !project.trashedAt && project.workspaceId === identity.workspaceId && project.ownerUserId === identity.userId);
 }
 
 export function tenantConversationId(workspaceId: string, projectId: string) {

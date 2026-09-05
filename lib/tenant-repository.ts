@@ -40,6 +40,9 @@ export type TenantRepository = {
   canCreate(identity: TenantUser): Promise<boolean>;
   create(input: ProjectCreateInput): Promise<ProjectCreateResult>;
   remove(identity: TenantUser, projectId: string): Promise<ProjectRemoveResult>;
+  listTrashed(identity: TenantUser): Promise<ProjectRecord[]>;
+  trash(identity: TenantUser, projectId: string): Promise<{ projectId: string; trashed: boolean }>;
+  restore(identity: TenantUser, projectId: string): Promise<{ projectId: string; restored: boolean }>;
 };
 
 export class TenantStorageUnavailable extends Error {
@@ -305,8 +308,28 @@ export class PostgresProjectRepository implements TenantRepository {
 
   async list(identity: TenantUser) {
     if (!this.databasePool || !authConfiguration().ready) throw new TenantStorageUnavailable();
-    const result = await this.databasePool.query<ProjectRecord>("SELECT project_id AS \"projectId\", workspace_id AS \"workspaceId\", created_by AS \"ownerUserId\", title, status, legacy FROM projects WHERE workspace_id = $1 AND created_by = $2 AND legacy = false ORDER BY created_at DESC", [identity.workspaceId, identity.userId]);
+    const result = await this.databasePool.query<ProjectRecord>("SELECT project_id AS \"projectId\", workspace_id AS \"workspaceId\", created_by AS \"ownerUserId\", title, status, legacy, trashed_at AS \"trashedAt\" FROM projects WHERE workspace_id = $1 AND created_by = $2 AND legacy = false AND trashed_at IS NULL ORDER BY created_at DESC", [identity.workspaceId, identity.userId]);
     return result.rows;
+  }
+
+  async listTrashed(identity: TenantUser) {
+    if (!this.databasePool || !authConfiguration().ready) throw new TenantStorageUnavailable();
+    const result = await this.databasePool.query<ProjectRecord>("SELECT project_id AS \"projectId\", workspace_id AS \"workspaceId\", created_by AS \"ownerUserId\", title, status, legacy, trashed_at AS \"trashedAt\" FROM projects WHERE workspace_id = $1 AND created_by = $2 AND legacy = false AND trashed_at IS NOT NULL ORDER BY trashed_at DESC", [identity.workspaceId, identity.userId]);
+    return result.rows;
+  }
+
+  async trash(identity: TenantUser, projectId: string): Promise<{ projectId: string; trashed: boolean }> {
+    if (!this.databasePool || !authConfiguration().ready) throw new TenantStorageUnavailable();
+    if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(projectId)) throw new TenantProjectConflict();
+    const result = await this.databasePool.query("UPDATE projects SET trashed_at = now(), trashed_by_user_id = $4, updated_at = now() WHERE project_id = $1 AND workspace_id = $2 AND created_by = $3 AND legacy = false AND trashed_at IS NULL RETURNING project_id", [projectId, identity.workspaceId, identity.userId, identity.userId]);
+    return { projectId, trashed: (result.rowCount ?? 0) > 0 };
+  }
+
+  async restore(identity: TenantUser, projectId: string): Promise<{ projectId: string; restored: boolean }> {
+    if (!this.databasePool || !authConfiguration().ready) throw new TenantStorageUnavailable();
+    if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(projectId)) throw new TenantProjectConflict();
+    const result = await this.databasePool.query("UPDATE projects SET trashed_at = NULL, trashed_by_user_id = NULL, updated_at = now() WHERE project_id = $1 AND workspace_id = $2 AND created_by = $3 AND legacy = false AND trashed_at IS NOT NULL RETURNING project_id", [projectId, identity.workspaceId, identity.userId]);
+    return { projectId, restored: (result.rowCount ?? 0) > 0 };
   }
 
   async get(identity: TenantUser, projectId: string) {
@@ -502,6 +525,17 @@ export class FixtureProjectRepository implements TenantRepository {
   readonly fixture: TenantFixture;
   constructor(fixture: TenantFixture) { this.fixture = fixture; }
   async list(identity: TenantUser) { return listProjectsForUser(this.fixture, identity); }
+  async listTrashed(identity: TenantUser) { return this.fixture.projects.filter((project) => !project.legacy && project.workspaceId === identity.workspaceId && project.ownerUserId === identity.userId && Boolean(project.trashedAt)); }
+  async trash(identity: TenantUser, projectId: string) {
+    const project = this.fixture.projects.find((item) => item.projectId === projectId && item.workspaceId === identity.workspaceId && item.ownerUserId === identity.userId && !item.trashedAt);
+    if (project) project.trashedAt = new Date().toISOString();
+    return { projectId, trashed: Boolean(project) };
+  }
+  async restore(identity: TenantUser, projectId: string) {
+    const project = this.fixture.projects.find((item) => item.projectId === projectId && item.workspaceId === identity.workspaceId && item.ownerUserId === identity.userId && item.trashedAt);
+    if (project) project.trashedAt = null;
+    return { projectId, restored: Boolean(project) };
+  }
   async get(identity: TenantUser, projectId: string) { return canAccessProject(this.fixture, identity, projectId); }
   async canCreate(identity: TenantUser) { return this.fixture.users.some((user) => user.userId === identity.userId && user.workspaceId === identity.workspaceId); }
   async create(input: ProjectCreateInput): Promise<ProjectCreateResult> {
@@ -525,6 +559,9 @@ export class TenantProjectGateway {
   get(identity: TenantUser, projectId: string) { return this.repository.get(identity, projectId); }
   create(input: ProjectCreateInput) { return this.repository.create(input); }
   remove(identity: TenantUser, projectId: string) { return this.repository.remove(identity, projectId); }
+  listTrashed(identity: TenantUser) { return this.repository.listTrashed(identity); }
+  trash(identity: TenantUser, projectId: string) { return this.repository.trash(identity, projectId); }
+  restore(identity: TenantUser, projectId: string) { return this.repository.restore(identity, projectId); }
   async assertCanCreate(identity: TenantUser) { if (!(await this.repository.canCreate(identity))) throw new TenantStorageUnavailable(); }
 }
 
