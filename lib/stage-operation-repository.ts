@@ -167,6 +167,23 @@ export class StageOperationRepository {
   }
 
   /**
+   * Test helper: release all locks for a project+stage (used by verification to stay idempotent)
+   */
+  static async releaseFieldLocksForProject(
+    workspaceId: string,
+    projectId: string,
+    stageId: StageId
+  ): Promise<number> {
+    const pool = getPool();
+    const res = await pool.query(
+      `DELETE FROM field_locks 
+       WHERE workspace_id = $1 AND project_id = $2 AND stage_id = $3`,
+      [workspaceId, projectId, stageId]
+    );
+    return res.rowCount ?? 0;
+  }
+
+  /**
    * Check if an attempted field write violates an existing lock
    */
   static async assertFieldWritePermitted(params: {
