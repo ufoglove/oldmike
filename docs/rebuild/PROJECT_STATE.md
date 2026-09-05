@@ -58,6 +58,11 @@
 2) 差異矩陣定稿 → 3) migration 0031 撰寫（隔離驗證）→ 4) trash/restore API＋UI → 5) AgentJob 底座＋start-summary → 6) Zotero binding 稽核與最小 UI → 7) 測試報告＋授權清單
 
 
+## 正式部署與驗證（2026-09-05 10:1x UTC）
+- 正式 DB：0031/0032 已套用（記錄 schema_migrations）；正式網站已部署新版（6a9be690 RUNNING）
+- 三項完成狀態：FOUNDATION_VERIFIED ✅／OPENCLAW_INTEGRATION_VERIFIED ✅／ZOTERO_READ_VERIFIED ✅（證據見 test-report）
+- QA 資料已全數清除；共用文獻 118 筆與 Zotero 未動
+
 ## 交付摘要（2026-09-05 09:1x UTC；V3-U01 工程三批完成）
 - git：cb2879f(基線)→cc43114(隔離+0031)→feef793(回收筒)→d3f4e37(0032+AgentJob)→cd258f9(Zotero binding+evidence-notes)
 - Migration（未套正式）：0031（projects.trashed_at/trashed_by_user_id、zotero_project_bindings、agent_jobs、agent_job_events、evidence_notes）、0032（research_documents.document_type +RESEARCH_START_SUMMARY）

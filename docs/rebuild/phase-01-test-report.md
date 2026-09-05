@@ -38,3 +38,11 @@
 - evidence-notes：create 201／update 200／list 200（含更新文字）；跨帳號讀取/刪除他人筆記 404（隔離 PASS）；owner delete 200。
 - 修正：updateEvidenceNote 參數序號錯位（$4 被佔用）→ 改游標式編號 PASS；zotero GET 的 projectZotero 改 best-effort（無 research_projects 時不再整段 503）。
 - 環境註記：本機基底缺 research_projects（migration 檔 0026–0030 缺檔 R1）→ 相關 route 以 best-effort 處理或於正式環境驗證。
+
+## 正式環境部署＋真實正測（2026-09-05 09:5x-10:1x UTC；deployments 6a9bdd85→6a9be127→6a9be690 RUNNING）
+- Migration 0031/0032 已套用正式 DB（agent_jobs/zotero_project_bindings/evidence_notes/trashed_at 就緒；schema_migrations 記錄至 0032；projects=0 基線不變）。
+- V3_U01_OPENCLAW_INTEGRATION_VERIFIED ✅：正式環境 RESEARCH_START_SUMMARY job 兩次皆 SUCCEEDED；research_documents 存 RESEARCH_START_SUMMARY v1→v2（supersedes 鏈）；9 鍵齊全；全程無假成功。
+- V3_U01_ZOTERO_READ_VERIFIED ✅：connect 200（key 僅伺服器端）→ sync imported=10（collection 25S7X2RD，真實唯讀）→ 重複 sync 不重複成長（links=8 唯一）→ bindings SYNCED。
+- V3_U01_FOUNDATION_VERIFIED ✅：trash/restore/reset 正式環境 PASS；reset 刪 40 children（含新表資料）且 literature_items 118 全保留（共用文獻不刪）。
+- 途中修正（真實測試才暴露）：① worker 需帶 route（否則只走 gateway 404→ai_service_unavailable）改 resolveModelRoute 主備援 → SUCCEEDED；② Zotero v3 不支援 itemType=-attachment%20-note 參數（400）→ 移除並 client 端過濾；③ saveZoteroConnection INSERT 參數跳號（$3 未用）→ 修正；④ binding upsert 需 collectionKey guard（NOT NULL）。
+- QA 帳號/專案已清除（共用文獻 118 筆與 Zotero 原樣）。
