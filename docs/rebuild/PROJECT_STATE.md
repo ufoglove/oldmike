@@ -77,3 +77,9 @@
 - 四功能：① 專案儲存/讀取（POST /projects/{id}/save 樂觀鎖＋冪等＋409 衝突；GET meta）② 未完成專案下拉＋搜尋（GET /projects 清單含 metaUpdatedAt+progress）③ 整體進度與路徑（沿用 overview-progress 14 里程碑＋控制列顯示 %/C/T/路線/Next）④ 底部紅色刪除區（移至回收筒＋輸入名稱確認＋無專案停用）。trash 取消執行中任務；worker 檢查已回收不寫入。
 - 測試（隔離）：save/dup idempotent/stale 409/new version/meta 讀回、trash→job CANCELLED、restore 全 PASS；tsc0/build0。
 - 待授權：正式 DB 套 0033＋部署＋production 走查。
+
+## 混合模型調用層級（2026-09-05 10:5x UTC；code 完成，env/部署待 Token key）
+- 需求：vectide（https://vectide.cn/v1）DeepSeek v4 Pro —— Token plan 為主、Coding plan 為輔、Zeabur 預設 gateway 為備援。
+- 程式（lib/openclaw.ts）：分層熔斷（token/coding 各自 cooldown）＋ callOpenClaw route 分支改三層：tryTokenPlanOpenAi → tryPrimaryOpenAi(coding) → executeOpenClawChatCompletion(gateway)。未設 OLDMIKE_LLM_TOKEN_API_KEY 時自動維持 Coding→Gateway 原行為（向後相容）。
+- 新增 env（server-side）：OLDMIKE_LLM_TOKEN_API_URL（預設沿用 OLDMIKE_LLM_API_URL=https://vectide.cn/v1）、OLDMIKE_LLM_TOKEN_API_KEY（待使用者提供）、OLDMIKE_LLM_TOKEN_MODEL（預設沿用 deepseek-v4-pro-0813）。既有 OLDMIKE_LLM_API_KEY= Coding plan。
+- tsc0/build0；真實分層調用驗證待 Token key 設定後於正式環境執行（deploy 亦待授權）。
