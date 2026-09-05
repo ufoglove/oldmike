@@ -50,15 +50,18 @@ export type ZoteroLibraryItem = {
 async function libraryItems(apiKey: string, libraryType: "user" | "group", libraryId: string, collectionKey: string | null): Promise<ZoteroLibraryItem[]> {
   const base = "https://api.zotero.org";
   const scope = collectionKey ? `/collections/${encodeURIComponent(collectionKey)}` : "";
-  const url = `${base}/${libraryType === "group" ? "groups" : "users"}/${encodeURIComponent(libraryId)}${scope}/items?limit=100&format=json&itemType=-attachment%20-note`;
+  // Zotero Web API v3 不支援 itemType=-attachment -note 過濾參數（會回 400）；改在 client 端排除 attachment/note
+  const url = `${base}/${libraryType === "group" ? "groups" : "users"}/${encodeURIComponent(libraryId)}${scope}/items?limit=100&format=json`;
   const response = await fetch(url, { method: "GET", headers: headers(apiKey), cache: "no-store", signal: AbortSignal.timeout(30_000) }).catch(() => {
     throw new ZoteroIntegrationError("zotero_transport_error", 503, "無法連線 Zotero API。");
   });
   const value = await readJsonResponse(response, "讀取 Zotero items");
   if (!Array.isArray(value)) throw new ZoteroIntegrationError("zotero_response_invalid", 502, "Zotero items 回應格式異常。");
-  return value.map((entry) => {
+  return value.flatMap((entry) => {
     const item = record(entry);
     const data = record(item?.data);
+    const itemType = String(data?.itemType ?? "journalArticle");
+    if (itemType === "attachment" || itemType === "note") return [];
     const meta = record(item?.meta);
     const creators = Array.isArray(data?.creators) ? data.creators as unknown[] : [];
     const tags = Array.isArray(data?.tags) ? data.tags as unknown[] : [];

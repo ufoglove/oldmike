@@ -2,7 +2,8 @@ import "server-only";
 
 import { createHash, randomUUID } from "node:crypto";
 import { Pool, type PoolClient } from "pg";
-import { callOpenClaw, type OpenClawChatOperation } from "./openclaw.ts";
+import { callOpenClaw } from "./openclaw.ts";
+import { resolveModelRoute } from "./model-route-catalog.ts";
 import type { ResearchTenant } from "./research-repository.ts";
 import {
   appendJobEvent,
@@ -110,7 +111,12 @@ export async function processResearchStartSummary(tenant: ResearchTenant, job: A
   const log = (eventType: string, detail?: Record<string, unknown>) => { void appendJobEvent({ tenant, jobId, eventType, detail }); };
   log("JOB_STARTED", { taskType: job.taskType, attempt: job.attempt + 1 });
   await updateAgentJobStatus({ tenant, jobId, patch: { status: "RUNNING", leaseUntil: new Date(Date.now() + 5 * 60_000).toISOString(), attempt: job.attempt + 1, checkpoint: { phase: "ai_call" } } });
-  const result = await callOpenClaw(summaryMessages(job.inputSnapshot), `agent-job:${jobId}`, "ASSIST_S0" as OpenClawChatOperation);
+  // 帶 route：先走主要（vectide）再備援 gateway，與既有翻譯/assist 成功路徑一致；
+  // 此 route 僅決定模型上游與預算等級，prompt 內容由 summaryMessages 控制
+  // 帶 route：先走主要（vectide）再備援 gateway（與既有翻譯成功路徑一致）；僅決定上游與預算
+  const operation = "ACADEMIC_LANGUAGE" as const;
+  const route = resolveModelRoute({ modeProfile: "AUTO", operation });
+  const result = await callOpenClaw(summaryMessages(job.inputSnapshot), `agent-job:${jobId}`, operation, route);
   if (result.kind === "not-configured") {
     log("JOB_FAILED", { code: "ai_service_not_configured" });
     await updateAgentJobStatus({ tenant, jobId, patch: { status: "FAILED", errorCode: "ai_service_not_configured", errorMessage: "老麥 AI 服務尚未設定；未產生或覆寫任何摘要。", resultReference: {} } });

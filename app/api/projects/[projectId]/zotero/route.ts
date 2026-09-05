@@ -103,7 +103,8 @@ export async function POST(request: Request, context: { params: Promise<{ projec
           },
         });
         await markZoteroSynced(tenant, { userId, status: "CONNECTED", libraryType, libraryId, collectionKey: typeof body.collectionKey === "string" ? body.collectionKey.trim() : undefined });
-        await upsertZoteroProjectBinding(tenant, { userId, libraryType, libraryId, collectionKey: typeof body.collectionKey === "string" ? body.collectionKey.trim() : null, collectionName: typeof body.collectionName === "string" ? body.collectionName.trim() : null, bindingStatus: "CONNECTED" }).catch(() => undefined);
+        const connectedCollectionKey = typeof body.collectionKey === "string" && body.collectionKey.trim() ? body.collectionKey.trim() : null;
+        if (connectedCollectionKey) await upsertZoteroProjectBinding(tenant, { userId, libraryType, libraryId, collectionKey: connectedCollectionKey, collectionName: typeof body.collectionName === "string" ? body.collectionName.trim() : null, bindingStatus: "CONNECTED" }).catch(() => undefined);
         return json({ ok: true, note: "Zotero 已連線；API Key 僅存於伺服器端（加密）。" });
       }
       case "disconnect": {
@@ -123,12 +124,12 @@ export async function POST(request: Request, context: { params: Promise<{ projec
             imported += 1;
           }
           await markZoteroSynced(tenant, { userId, status: "SYNCED", libraryType: connection.libraryType, libraryId: connection.libraryId, collectionKey: connection.collectionKey ?? undefined });
-          await upsertZoteroProjectBinding(tenant, { userId, libraryType: connection.libraryType as "user" | "group", libraryId: connection.libraryId, collectionKey: connection.collectionKey ?? null, collectionName: connection.collectionName ?? null, bindingStatus: "SYNCED", lastSuccessfulSyncAt: new Date(), lastError: null }).catch(() => undefined);
+          if (connection.collectionKey) await upsertZoteroProjectBinding(tenant, { userId, libraryType: connection.libraryType as "user" | "group", libraryId: connection.libraryId, collectionKey: connection.collectionKey, collectionName: connection.collectionName ?? null, bindingStatus: "SYNCED", lastSuccessfulSyncAt: new Date(), lastError: null }).catch(() => undefined);
           return json({ ok: true, imported, note: `已從 Zotero 同步 ${imported} 筆文獻（含去重）。` });
         } catch (syncError) {
           // 同步中途失敗：回寫 SYNC_ERROR，避免狀態卡在 SYNCING
           try { await markZoteroSynced(tenant, { userId, status: "SYNC_ERROR" }); } catch { /* 狀態回寫失敗不遮罩原始錯誤 */ }
-          await upsertZoteroProjectBinding(tenant, { userId, libraryType: connection.libraryType as "user" | "group", libraryId: connection.libraryId, collectionKey: connection.collectionKey ?? null, collectionName: connection.collectionName ?? null, bindingStatus: "SYNC_FAILED", lastError: syncError instanceof Error ? syncError.message.slice(0, 300) : "sync_failed" }).catch(() => undefined);
+          if (connection.collectionKey) await upsertZoteroProjectBinding(tenant, { userId, libraryType: connection.libraryType as "user" | "group", libraryId: connection.libraryId, collectionKey: connection.collectionKey, collectionName: connection.collectionName ?? null, bindingStatus: "SYNC_FAILED", lastError: syncError instanceof Error ? syncError.message.slice(0, 300) : "sync_failed" }).catch(() => undefined);
           throw syncError;
         }
       }

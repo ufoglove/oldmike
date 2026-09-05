@@ -701,7 +701,7 @@ export async function saveZoteroConnection(tenant: ResearchTenant, input: { user
     }
     await client.query(
       `INSERT INTO zotero_connections (id,workspace_id,user_id,library_type,library_id,collection_key,collection_name,auth_method,credentials_enc,sync_status,created_at,updated_at)
-       VALUES ($4,$1,$2,$5,$6,$7,$8,$9,$10,'CONNECTED',now(),now())`,
+       VALUES ($3,$1,$2,$4,$5,$6,$7,$8,$9,'CONNECTED',now(),now())`,
       [tenant.workspaceId, input.userId, `zconn_${randomUUID()}`, input.connection.libraryType, input.connection.libraryId, input.connection.collectionKey, input.connection.collectionName, input.connection.authMethod, credentialsEnc],
     );
     return { ok: true };
