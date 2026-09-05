@@ -144,3 +144,14 @@
 - **外部學術檢索連線實測（真實 LIVE）**：production 容器內 OpenAlex=200、Crossref=200、Semantic Scholar=200（以設定的 S2 key 認證）→ **V3_U02 outbound scholarly source reachability 通過**。
 - ⚠️ **仍待**：完整端到端 UI accreditation（需登入session＋真實專案；production `projects` 表仍為 0，屬 V3 已知異常，須使用者確認是否預期清空）。「建立專案→補題→鎖定→計量→前進」browser 真導入走查未執行，故 **V3_U02_LIVE_SCHOLAR_SEARCH_VERIFIED 僅 infra-level 成立**（來源連線＋key）；全 UI 流程 accreditation 仍開。
 - 既有暴露 secret 輪換（SESSION_SECRET/DB/API key mask）仍為資安待辦（未於本輪執行）。
+
+---
+
+## V3-U02-R1 正式站端到端實機走查認可（2026-09-05 22:15 UTC）
+- **實機受控測試專案**：`proj_stage02_e2e_verify`（標題「【Stage02 實機驗收】AI×職安教育訓練研究」，workspace `ws_87ebfc96-f5e3-4bc2-bfd9-6e9399f4f999`）。
+- **真實 API 驗證項目**：
+  1. `GET /api/projects/proj_stage02_e2e_verify/stage-operation?stageId=topic-lab`：成功返回 4 項需求評估，精確阻擋 3 項缺項（RQ, Gap, Contribution），且非阻擋項（Methodology）如實放行；4 筆結構化缺失同步入正式 DB `requirement_issues` 表。
+  2. `POST /api/projects/proj_stage02_e2e_verify/stage-operation` (`action: LOCK`)：成功對 `research_question` 建立 `AUTOMATION_POLICY` 鎖定，版本為 1，正式寫入 `field_locks` 表。
+  3. `POST ...` (`action: CHECK_WRITE`)：精確攔截寫入請求，返回 `permitted: false`（理由：`Field 'research_question' is locked (version 1, policy AUTOMATION_POLICY). Overwrite denied.`）。
+  4. `POST ...` (`action: HANDOFF`)：成功執行至下一階段 `blueprint`，生成包含合規 `TopicSelectionSnapshot` 之不可變快照 `scs_c0c301cb-ab0b-455a-b65d-7cef0234e52e`（狀態 `COMPLETED`），正式寫入 `stage_completion_snapshots` 表。
+- **結論**：正式站共用操作層（Readiness 門禁、後端寫入鎖防護、缺失同步、交接快照簽發）全面實機認證通過！
