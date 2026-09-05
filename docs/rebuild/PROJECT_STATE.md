@@ -71,3 +71,9 @@
 - 測試：隔離 PG15@5433 v3u01_dev＋local standalone@3100；回收筒/冪等/事件/越權/notes CRUD 全 PASS；migration 0031/0032 up/down roundtrip PASS
 - 外部：真實 AI/Zotero 正測 BLOCKED_EXTERNAL_CONFIG；consensus MCP 待 gateway restart
 - 正式部署：未執行（另需授權）
+
+
+## V3-HOME-01 追加（2026-09-05 10:4x UTC；正式部署/migration 0033 待授權）
+- 四功能：① 專案儲存/讀取（POST /projects/{id}/save 樂觀鎖＋冪等＋409 衝突；GET meta）② 未完成專案下拉＋搜尋（GET /projects 清單含 metaUpdatedAt+progress）③ 整體進度與路徑（沿用 overview-progress 14 里程碑＋控制列顯示 %/C/T/路線/Next）④ 底部紅色刪除區（移至回收筒＋輸入名稱確認＋無專案停用）。trash 取消執行中任務；worker 檢查已回收不寫入。
+- 測試（隔離）：save/dup idempotent/stale 409/new version/meta 讀回、trash→job CANCELLED、restore 全 PASS；tsc0/build0。
+- 待授權：正式 DB 套 0033＋部署＋production 走查。

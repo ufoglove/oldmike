@@ -312,6 +312,57 @@ export class PostgresProjectRepository implements TenantRepository {
     return result.rows;
   }
 
+  async listSummaries(identity: TenantUser) {
+    if (!this.databasePool || !authConfiguration().ready) throw new TenantStorageUnavailable();
+    const result = await this.databasePool.query<Record<string, unknown>>(
+      "SELECT project_id AS \"projectId\", workspace_id AS \"workspaceId\", created_by AS \"ownerUserId\", title, status, legacy, trashed_at AS \"trashedAt\", updated_at AS \"updatedAt\", meta_version AS \"metaVersion\", meta_updated_at AS \"metaUpdatedAt\", current_location AS \"currentLocation\", primary_goal AS \"primaryGoal\", funding_route AS \"fundingRoute\", publication_route AS \"publicationRoute\" FROM projects WHERE workspace_id = $1 AND created_by = $2 AND legacy = false AND trashed_at IS NULL ORDER BY COALESCE(meta_updated_at, updated_at) DESC",
+      [identity.workspaceId, identity.userId],
+    );
+    return result.rows;
+  }
+
+  async getProjectMeta(identity: TenantUser, projectId: string) {
+    if (!this.databasePool || !authConfiguration().ready) throw new TenantStorageUnavailable();
+    const result = await this.databasePool.query<Record<string, unknown>>(
+      "SELECT meta_version AS \"metaVersion\", meta_updated_at AS \"metaUpdatedAt\", meta_updated_by_user_id AS \"metaUpdatedByUserId\", current_location AS \"currentLocation\", primary_goal AS \"primaryGoal\", funding_route AS \"fundingRoute\", publication_route AS \"publicationRoute\", project_draft AS \"projectDraft\", last_payload_hash AS \"lastPayloadHash\", updated_at AS \"updatedAt\" FROM projects WHERE project_id = $1 AND workspace_id = $2 AND created_by = $3 AND legacy = false",
+      [projectId, identity.workspaceId, identity.userId],
+    );
+    return result.rows[0] as Record<string, unknown> | undefined;
+  }
+
+  async saveProjectMeta(identity: TenantUser, projectId: string, input: {
+    fields: Record<string, unknown>;
+    expectedVersion?: number | null;
+  }): Promise<{ saved: boolean; idempotent: boolean; conflict: boolean; version: number; savedAt: string | null; serverVersion?: number }> {
+    if (!this.databasePool || !authConfiguration().ready) throw new TenantStorageUnavailable();
+    if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(projectId)) throw new TenantProjectConflict();
+    const current = await this.getProjectMeta(identity, projectId);
+    if (!current) return { saved: false, idempotent: false, conflict: false, version: 0, savedAt: null };
+    const serverVersion = Number(current.metaVersion ?? 0);
+    const payloadHash = createHash("sha256").update(JSON.stringify(input.fields)).digest("hex");
+    // 冪等優先：同一內容重試（即使 expectedVersion 已過期）不視為衝突、不建立新版本
+    if (payloadHash === String(current.lastPayloadHash ?? "")) {
+      return { saved: true, idempotent: true, conflict: false, version: serverVersion, savedAt: null };
+    }
+    if (input.expectedVersion !== undefined && input.expectedVersion !== null && Number(input.expectedVersion) !== serverVersion) {
+      return { saved: false, idempotent: false, conflict: true, version: 0, savedAt: null, serverVersion };
+    }
+    const result = await this.databasePool.query<{ meta_version: number; meta_updated_at: Date }>(
+      "UPDATE projects SET meta_version = meta_version + 1, meta_updated_at = now(), meta_updated_by_user_id = $4, current_location = $5, primary_goal = $6, funding_route = $7, publication_route = $8, project_draft = $9::jsonb, last_payload_hash = $10, updated_at = now() WHERE project_id = $1 AND workspace_id = $2 AND created_by = $3 AND legacy = false RETURNING meta_version, meta_updated_at",
+      [projectId, identity.workspaceId, identity.userId, identity.userId,
+        typeof input.fields.currentLocation === "string" ? input.fields.currentLocation.slice(0, 120) : (input.fields.currentLocation === null ? null : current.currentLocation),
+        typeof input.fields.primaryGoal === "string" ? input.fields.primaryGoal.slice(0, 1000) : (input.fields.primaryGoal === null ? null : current.primaryGoal),
+        typeof input.fields.fundingRoute === "string" ? input.fields.fundingRoute.slice(0, 40) : (input.fields.fundingRoute === null ? null : current.fundingRoute),
+        typeof input.fields.publicationRoute === "string" ? input.fields.publicationRoute.slice(0, 40) : (input.fields.publicationRoute === null ? null : current.publicationRoute),
+        JSON.stringify(input.fields.draft ?? current.projectDraft ?? {}),
+        payloadHash],
+    );
+    const row = result.rows[0];
+    if (!row) return { saved: false, idempotent: false, conflict: false, version: serverVersion, savedAt: null };
+    return { saved: true, idempotent: false, conflict: false, version: Number(row.meta_version), savedAt: row.meta_updated_at?.toISOString() ?? null };
+  }
+
+
   async listTrashed(identity: TenantUser) {
     if (!this.databasePool || !authConfiguration().ready) throw new TenantStorageUnavailable();
     const result = await this.databasePool.query<ProjectRecord>("SELECT project_id AS \"projectId\", workspace_id AS \"workspaceId\", created_by AS \"ownerUserId\", title, status, legacy, trashed_at AS \"trashedAt\" FROM projects WHERE workspace_id = $1 AND created_by = $2 AND legacy = false AND trashed_at IS NOT NULL ORDER BY trashed_at DESC", [identity.workspaceId, identity.userId]);
@@ -322,6 +373,10 @@ export class PostgresProjectRepository implements TenantRepository {
     if (!this.databasePool || !authConfiguration().ready) throw new TenantStorageUnavailable();
     if (!/^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/.test(projectId)) throw new TenantProjectConflict();
     const result = await this.databasePool.query("UPDATE projects SET trashed_at = now(), trashed_by_user_id = $4, updated_at = now() WHERE project_id = $1 AND workspace_id = $2 AND created_by = $3 AND legacy = false AND trashed_at IS NULL RETURNING project_id", [projectId, identity.workspaceId, identity.userId, identity.userId]);
+    if ((result.rowCount ?? 0) > 0) {
+      // 回收後請求取消執行中任務；伺服器不允許遲到結果復活（worker 亦會檢查）
+      await this.databasePool.query("UPDATE agent_jobs SET status='CANCELLED', cancel_requested=true, updated_at=now() WHERE workspace_id=$1 AND project_id=$2 AND status IN ('QUEUED','RUNNING','PARTIAL')", [identity.workspaceId, projectId]).catch(() => undefined);
+    }
     return { projectId, trashed: (result.rowCount ?? 0) > 0 };
   }
 

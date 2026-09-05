@@ -109,6 +109,18 @@ async function saveSummaryDocument(tenant: ResearchTenant, actorId: string, summ
 export async function processResearchStartSummary(tenant: ResearchTenant, job: AgentJob): Promise<void> {
   const jobId = job.jobId;
   const log = (eventType: string, detail?: Record<string, unknown>) => { void appendJobEvent({ tenant, jobId, eventType, detail }); };
+  // 回收/取消防護：worker 啟動時重新檢查狀態與專案未回收，避免遲到結果寫入已回收專案
+  const fresh = await getAgentJob(tenant, jobId).catch(() => null);
+  if (!fresh || fresh.status === "CANCELLED" || fresh.status === "FAILED" || fresh.status === "SUCCEEDED") return;
+  const trashed = await withClient(async (client) => {
+    const row = await client.query(`SELECT trashed_at IS NOT NULL AS trashed FROM projects WHERE ${tenantWhere()} LIMIT 1`, [tenant.workspaceId, tenant.projectId]);
+    return Boolean(row.rows[0]?.trashed);
+  }).catch(() => false);
+  if (trashed) {
+    log("JOB_CANCELLED", { code: "project_trashed" });
+    await updateAgentJobStatus({ tenant, jobId, patch: { status: "CANCELLED", errorCode: "project_trashed", errorMessage: "專案已移至回收筒；任務已取消，未寫入任何內容。" } });
+    return;
+  }
   log("JOB_STARTED", { taskType: job.taskType, attempt: job.attempt + 1 });
   await updateAgentJobStatus({ tenant, jobId, patch: { status: "RUNNING", leaseUntil: new Date(Date.now() + 5 * 60_000).toISOString(), attempt: job.attempt + 1, checkpoint: { phase: "ai_call" } } });
   // 帶 route：先走主要（vectide）再備援 gateway，與既有翻譯/assist 成功路徑一致；
