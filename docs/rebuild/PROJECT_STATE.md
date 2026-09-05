@@ -179,3 +179,12 @@
 - **能力快照更新**：consensus 1.0.1 → search/metadata/citations = `live_verified`；fulltext/references/write_scope 保持 unsupported/unknown（誠實防護）。
 - **Commit `6a6de72`**；契約測試更新後 ALL PASS、tsc 0。
 
+## V3-U03-R1 批次 B：附件補強契約層（2026-09-06，commit `ac50b4f`）
+- **A3 Profile**：`lib/research-profile-contract.ts` — 六主軸版本化 Profile（ai_cross_domain/ai_education/ai_occupational_safety_training/ai_environmental_engineering/ai_energy_management/xr_occupational_safety_training_education）；`appliesTo: NEW_RUNS_ONLY`；`diffProfiles` 鎖定專案同意門；能源軸關鍵詞（能源管理/energy management/節能/淨零/能源效率/demand forecasting…）進 query＋coverage（非僅顯示標籤）；資源 UNKNOWN 不從專長推斷。
+- **A4 雷達三分類**：`lib/opportunity-category-contract.ts` — HOT_TOPIC/EMERGING_FRONTIER/CROSS_DOMAIN 三分類＋多標籤＋primaryCategory；唯一 opportunityId 去重（跨分類總量不重複相加）；`idea_expansion_class`（CORE/ADJACENT/FRONTIER）為候選 5/3/2 配置軸，與三分類嚴格分離；無計量依據時顯示「檢索樣本中的趨勢線索」。
+- **A12 DailyDigest**：`lib/daily-digest-contract.ts` — Asia/Taipei、預設 `enabled:false`（規格：未授權不啟用）、冪等鍵含 workspace/schedule/localDate/kind/project、每日預算守衛、同日不重跑。
+- **A6 驗證**：選題實驗室無獨立「沒有靈感」生成器（僅輕量 chips 導回一鍵靈感）；歷史/深鏈保留。
+- **測試**：`scripts/verify-stage03-batch-b-contracts.ts` 31/31 PASS、tsc 0；交付 `docs/rebuild/phase-03-attachment-requirements-matrix.md`。
+- **仍待**：A5 一鍵靈感「不足不湊題」UI/服務層放寬（Top3 不足 3 時顯示實際數）；A7 正確交接（批次 C 落地）；Ai4Scholar adapter（需帳號文件/key 授權）。
+
+
