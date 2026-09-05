@@ -134,3 +134,13 @@
 
 ## 下一階段邊界（V3-U02-R1 完成後停止）
 **本輪結束即停止**。Stage-3「投稿導航」必須直接沿用 StageActionBar、RequirementIssuePanel、FieldAssist、Lock 與 Handoff 契約，不重新發明。
+
+---
+
+## V3-U02-R1 正式上線（2026-09-05 22:0x UTC）— 使用者授權後執行
+- **production DB 套用 migration 0034**：`0034_stage_operation_layer.up.sql` 已套用（schema_migrations 紀錄）；`field_locks`/`requirement_issues`/`stage_completion_snapshots` 三表在位（0 rows，未使用）。
+- **production 部署**：deploy-restored.py zip 上傳 → deployment **6a9c90ac7066abe5dab30424 RUNNING**（21:59 UTC，最新）。
+- **health 驗證**：login 200、root 307→/login 200。新 route `/api/projects/[id]/stage-operation` 與 stage-readiness-service 已於執行容器確認存在（default 500 = bogus project not-found，非部署缺陷）。
+- **外部學術檢索連線實測（真實 LIVE）**：production 容器內 OpenAlex=200、Crossref=200、Semantic Scholar=200（以設定的 S2 key 認證）→ **V3_U02 outbound scholarly source reachability 通過**。
+- ⚠️ **仍待**：完整端到端 UI accreditation（需登入session＋真實專案；production `projects` 表仍為 0，屬 V3 已知異常，須使用者確認是否預期清空）。「建立專案→補題→鎖定→計量→前進」browser 真導入走查未執行，故 **V3_U02_LIVE_SCHOLAR_SEARCH_VERIFIED 僅 infra-level 成立**（來源連線＋key）；全 UI 流程 accreditation 仍開。
+- 既有暴露 secret 輪換（SESSION_SECRET/DB/API key mask）仍為資安待辦（未於本輪執行）。
