@@ -50,6 +50,9 @@
 - consensus MCP server 誤殺後 runtime 重啟出現雙實例；已清雙實例，工具仍 Not connected → 需 gateway 重整或下次 session 驗證。
 - 真實 AI 正測需正式/staging env（gateway base pathname 限制）。
 
-## 下一批工作
+## 下一批工作（收尾）
+- 回收筒/摘要卡/文獻中心 UI 瀏覽器走查（playwright 或正式環境）
+- 最終交付：修改清單＋測試報告＋授權清單（正式部署需另授權）
+- consensus MCP 重整（gateway restart）
 1) docs/rebuild 五份文件補完（audit/scope/contracts/traceability/test-report/deploy）
 2) 差異矩陣定稿 → 3) migration 0031 撰寫（隔離驗證）→ 4) trash/restore API＋UI → 5) AgentJob 底座＋start-summary → 6) Zotero binding 稽核與最小 UI → 7) 測試報告＋授權清單
