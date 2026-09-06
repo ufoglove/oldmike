@@ -123,6 +123,9 @@ export type SubmissionNavigationSnapshot = {
   selectedNstcCandidate?: NstcRouteCandidate;
   selectedMoeTprCandidate?: MoeTprRouteCandidate;
 
+  // Fingerprint pass-through for downstream blueprint generation without re-entry
+  fingerprint?: SubmissionFingerprintVersion;
+
   ruleSnapshots: OfficialRuleSnapshot[];
   handoffLimitations: string[];
   downstreamRequirements: string[]; // for research blueprint stage
@@ -164,6 +167,7 @@ export function buildSubmissionNavigationSnapshot(input: {
     selectedJournalCandidate: input.selectedJournal,
     selectedNstcCandidate: input.selectedNstc,
     selectedMoeTprCandidate: input.selectedMoeTpr,
+    fingerprint: input.fingerprint,
     ruleSnapshots: input.ruleSnapshots || [],
     handoffLimitations: input.handoffLimitations || ["目標年度規則尚待公告", "研究者資格待機構核實"],
     downstreamRequirements: input.downstreamRequirements || ["研究藍圖階段需依本導航結果擬定方法與期程"],

@@ -6,17 +6,21 @@
 import { useState } from "react";
 import { type SubmissionNavigationSnapshot } from "@/lib/submission-navigation-engines-contract";
 import { RESEARCH_GOAL_DEFINITIONS, type PrimaryGoalId } from "@/lib/research-goal-registry";
+import ResearchBlueprintStudioView from "./ResearchBlueprintStudioView";
 
 export default function HandoffReceiverView({
   snapshot,
   onReturnToNavigator,
   onExportSummary,
+  onNavigateToStage5,
 }: {
   snapshot: SubmissionNavigationSnapshot;
   onReturnToNavigator?: () => void;
   onExportSummary?: () => void;
+  onNavigateToStage5?: (handoffSnapshotId: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
   // Derive goal from snapshot funding & publication intents
   const derivedGoal: PrimaryGoalId = snapshot.fundingIntent === "MOE_TPR"
     ? "MOE_TPR"
@@ -30,6 +34,28 @@ export default function HandoffReceiverView({
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
   };
+
+  if (isWorkspaceOpen) {
+    return (
+      <div>
+        <div style={{ maxWidth: 1040, margin: "12px auto 0", padding: "0 24px", display: "flex", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setIsWorkspaceOpen(false)}
+            style={{ fontSize: 12 }}
+          >
+            ← 縮小至交接摘要檢視
+          </button>
+        </div>
+        <ResearchBlueprintStudioView
+          snapshot={snapshot}
+          onReturnToNavigator={onReturnToNavigator}
+          onNavigateToStage5={onNavigateToStage5}
+        />
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: 860, margin: "24px auto", padding: "20px 24px", background: "#fff", border: "1px solid #dde6e0", borderRadius: 16 }}>
@@ -58,15 +84,22 @@ export default function HandoffReceiverView({
         </div>
       </div>
 
-      {/* Module Unavailable Notice (Spec §24: 誠實標示待建置，不跳空白頁、不造假核准藍圖) */}
-      <div style={{ background: "#fff8e1", border: "1px solid #e2b93b", borderRadius: 12, padding: "12px 16px", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: 24 }} aria-hidden="true">🔒</span>
+      {/* Module Upgrade & Workspace Entry */}
+      <div style={{ background: "#e8f5e9", border: "1px solid #81c784", borderRadius: 12, padding: "14px 18px", marginBottom: 20, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <strong style={{ color: "#7a5200", fontSize: 14 }}>第四階段專業研究藍圖引擎 · 依規格待建置</strong>
-          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#5b4a1e" }}>
-            本輪（第三階段 V3-U03-FULL）已完成投稿與計畫導航決策並產生不可變交接快照。後續研究藍圖模組將依規格讀取本快照直接消費，無需重新選題。
+          <strong style={{ color: "#1b5e20", fontSize: 14 }}>🚀 第四階段「研究藍圖與研究規劃」已就緒</strong>
+          <p style={{ margin: "2px 0 0", fontSize: 12, color: "#2e7d32" }}>
+            已自第三階段承接真實快照資料。可直接開啟工作區進行 Objective–RQ 矩陣、三目標藍圖與工作包規劃。
           </p>
         </div>
+        <button
+          type="button"
+          className="primary-button"
+          onClick={() => setIsWorkspaceOpen(true)}
+          style={{ fontSize: 13, whiteSpace: "nowrap" }}
+        >
+          開啟研究藍圖工作區 →
+        </button>
       </div>
 
       {/* Selected Routes Summary */}
