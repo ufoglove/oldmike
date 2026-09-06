@@ -226,3 +226,13 @@
 - **整合**：`GuidedResearchCenter.renderOverview` 加入面板（目標取自 project outputTrack，缺省 JOURNAL_SCI_SSCI）。
 - **測試**：`verify-stage03-r2-batch-b.ts` 18/18 PASS、tsc 0；交付 `docs/rebuild/phase-03-home-workflow-lights.md`。
 - **誠實限制**：目前首頁 progress 傳 `[]`（全 NOT_STARTED），真實 completion 串接在批次 C/D 以 stage-operation snapshot 注入——未造假綠燈。
+
+## V3-U03-R2 批次 C+D 結案：全站智慧工作流與三大目標整合完成（2026-09-06）
+- **批次 C 成果**：
+  * `lib/project-orchestrator-contract.ts` — 在 AgentJob 上擴充 ProjectOrchestrator；三級自動化（GUIDED/AUTO_DRAFT/AUTO_ADVANCE）；`decidePrimaryButton()` 依三目標與結果狀態動態決定按鈕；`validateActionGate()` 強制在 AUTO_ADVANCE 下不跳過權限/鎖/預算檢查。
+  * `lib/assist-coverage-registry.ts` — 22 模組全站 Assist coverage 登錄（可連續做什麼、不得造假什麼、真實完成依據）。
+  * 契約測試：`verify-stage03-r2-batch-c.ts` 18/18 PASS、tsc 0；commit `52afe5d`。
+- **批次 D 驗收**：
+  * `docs/rebuild/phase-03-r2-test-report.md` — 40 項驗收（T01–T40）分類：26 LIVE、9 REGRESSION、5 POLICY、0 BLOCKED。
+  * 累計契約測試：V3-U03-R1 (89) + V3-U03-R2 (51: A15+B18+C18) = **140 PASS, 0 FAIL, tsc 0**。
+- **驗收狀態名稱**：`GLOBAL_THREE_GOAL_WORKFLOW_INTEGRATION_VERIFIED`（工程驗收，非專案科研完成）。
