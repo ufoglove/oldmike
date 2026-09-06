@@ -3,7 +3,7 @@
  * Run: node --experimental-strip-types scripts/verify-stage03-batch-a-contracts.ts
  * Covers: capability matrix shape, dedupe (DOI multi-provider merge, title-year fuzzy), quota pool flag.
  */
-import { capabilitySnapshots, consensusCapabilitySnapshot, ai4ScholarCapabilitySnapshot, createPendingLiveAdapter } from "../lib/federated-literature-adapters.ts";
+import { capabilitySnapshots, consensusCapabilitySnapshot, ai4ScholarCapabilitySnapshot, createAi4ScholarAdapter, createPendingLiveAdapter } from "../lib/federated-literature-adapters.ts";
 import { dedupeCandidatesIntoCanonical, type ProviderRecord } from "../lib/federated-literature-contract.ts";
 
 let failures = 0;
@@ -46,9 +46,38 @@ check("consensus_fulltext_still_unsupported", cs.capabilities.fulltext_or_chunks
 check("consensus_references_still_unknown", cs.capabilities.references.status === "unknown");
 check("consensus_write_scope_unsupported", cs.capabilities.write_scope.status === "unsupported");
 
-// Ai4Scholar: unknown only (no adapter contract test yet)
+// Ai4Scholar: search/metadata/citations/usage live_verified after authorized 2026-09-06 probe;
+// fulltext/references/etc stay unknown (honest)
 const ai4 = ai4ScholarCapabilitySnapshot();
-check("ai4scholar_unknown_only", Object.values(ai4.capabilities).every((c) => c.status === "unknown"));
+check("ai4scholar_search_live", ai4.capabilities.search.status === "live_verified", ai4.capabilities.search.status);
+check("ai4scholar_usage_live", ai4.capabilities.usage_reporting.status === "live_verified");
+check("ai4scholar_fulltext_unknown", ai4.capabilities.fulltext_or_chunks.status === "unknown");
+check("ai4scholar_write_unsupported", ai4.capabilities.write_scope.status === "unsupported");
+
+// Ai4Scholar adapter: mock fetcher, no key needed (endpoint contract test)
+{
+  const mockFetcher = async (url: string | URL, init?: { headers?: Record<string, string> }) => {
+    const u = String(url);
+    if (!u.includes("graph/v1/paper/search")) throw new Error("wrong endpoint");
+    const auth = (init?.headers || {})["Authorization"];
+    if (!auth || !auth.startsWith("Bearer ")) throw new Error("missing bearer auth");
+    return new Response(JSON.stringify({
+      total: 881, offset: 0, next: 2,
+      data: [{ paperId: "abc123", title: "VR safety training", year: 2024, citationCount: 99 }],
+    }), { status: 200, headers: { "content-type": "application/json" } });
+  };
+  const adapter = createAi4ScholarAdapter(mockFetcher as never);
+  // set env for adapter
+  const prev = process.env.AI4SCHOLAR_API_KEY;
+  process.env.AI4SCHOLAR_API_KEY = "test-key";
+  const out = await adapter.search({ naturalLanguageQuery: "VR safety", limit: 5 });
+  if (prev === undefined) delete process.env.AI4SCHOLAR_API_KEY; else process.env.AI4SCHOLAR_API_KEY = prev;
+  check("ai4scholar_adapter_record_count", out.records.length === 1, `got ${out.records.length}`);
+  check("ai4scholar_adapter_provider", out.records[0]?.retrievalProvider === "AI4SCHOLAR");
+  check("ai4scholar_adapter_year_precision", out.records[0]?.publicationDatePrecision === "YEAR");
+  check("ai4scholar_adapter_canonical_title", out.canonicalCandidates[0]?.title === "VR safety training");
+  check("ai4scholar_adapter_citation", out.records[0]?.reportedCitationCount === 99);
+}
 
 // 2. Dedup: same DOI from Consensus + Semantic Scholar + Ai4Scholar -> 1 canonical, 3 providerRecords
 const ws = "ws_test";
