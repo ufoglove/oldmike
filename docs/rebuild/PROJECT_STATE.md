@@ -185,6 +185,15 @@
 - **A12 DailyDigest**：`lib/daily-digest-contract.ts` — Asia/Taipei、預設 `enabled:false`（規格：未授權不啟用）、冪等鍵含 workspace/schedule/localDate/kind/project、每日預算守衛、同日不重跑。
 - **A6 驗證**：選題實驗室無獨立「沒有靈感」生成器（僅輕量 chips 導回一鍵靈感）；歷史/深鏈保留。
 - **測試**：`scripts/verify-stage03-batch-b-contracts.ts` 31/31 PASS、tsc 0；交付 `docs/rebuild/phase-03-attachment-requirements-matrix.md`。
-- **仍待**：A5 一鍵靈感「不足不湊題」UI/服務層放寬（Top3 不足 3 時顯示實際數）；A7 正確交接（批次 C 落地）；Ai4Scholar adapter（需帳號文件/key 授權）。
+- **B-2 A5 放寬**：commit `8badf51` — `CANDIDATE_COUNT` 放寬為 1-12（預設 10），TOP3 放寬為 1-3；7 題直接接受不湊題；34/34 PASS。
+
+## V3-U03-R1 批次 C：投稿導航三路線契約層（2026-09-06，commit `36c68d2`）
+- **投稿指紋**：`lib/submission-fingerprint-contract.ts` — `buildFingerprintFromTopicSnapshot()` 直接從 `TopicSelectionSnapshot` 帶入（零重複輸入，spec §3）；獨立雙軸（`funding_intent: NSTC_GENERAL/MOE_TPR/NONE/UNDECIDED`, `publication_intent: JOURNAL/DEFERRED/NONE`，spec §4）；研究者資訊 `UNKNOWN` 不推斷。
+- **評分契約**：`computeMatchScore()` 總權重 100，`observed_points = Σ(weight × rating / 5)`，UNKNOWN 非 0 且不假滿分，覆蓋率顯式標記（如 `已評 59 分（覆蓋 70%）`，spec §13）。
+- **三路線候選契約**：`lib/submission-navigation-engines-contract.ts` — 國際期刊（JournalCandidate：SJR/JCR 分離、APC 幣別/減免、近期文章）、國科會一般研究計畫（NstcRouteCandidate：處別/學門代碼、校內期限分離）、教育部教學實踐（MoeTprRouteCandidate：課程/主授核實、基線缺失）。
+- **官方規則快照**：`OfficialRuleSnapshot` — 7 種狀態（VERIFIED_APPLICABLE/REFERENCE_ONLY…）、民國/西元年分離、主管機關分離。
+- **交接快照**：`buildSubmissionNavigationSnapshot()` — 不可變快照至研究藍圖（`ROUTE_PLAN_READY` vs `PROVISIONAL_ROUTE_PLAN_READY`，spec §20）。
+- **測試**：`scripts/verify-stage03-batch-c-contracts.ts` 22/22 PASS、tsc 0；交付 `docs/rebuild/phase-03-route-data-contracts.md`。
+
 
 
