@@ -267,3 +267,13 @@
 - **前端斷層修復**：`candidateToNavigatorTopic` 原為死碼；`sendCandidateToNavigator` 接通 topic-lab/radar 的「送往投稿與計畫導航」（有專案直接承接、無專案 adopt→S0→navigator）。
 - **測試**：純邏輯鏈 15/15 PASS（指紋承接/快照路線就緒/blueprint 交接欄位完整）；DB 持久化測試 **BLOCKED**（本沙箱無 PostgreSQL binary，isolated PG 5433 本 session 不可用）；tsc 0。
 - **交付**：`docs/rebuild/stage03-full-batch-a.md`。
+
+## V3-U03-FULL 批次 B：三路線真實匹配與官方規則快照服務（2026-09-06，commit `bcecf1b`）
+- **服務實作**：`lib/submission-navigation-service.ts`
+  * 官方學門目錄：`NSTC_GENERAL_DISCIPLINES`（7 學門，含 H03 教育、E11 工工）＋`MOE_TPR_DISCIPLINES`（5 學門／專案，獨立 namespace）。
+  * 期刊匹配：`evaluateJournalCandidates()` — Safety Science（Best Fit）、Computers & Education（Ambitious）；SCIE/SSCI 索引核實；APC 幣別/金額/減免；前瞻概念評估不造假 Results（T19-T21）。
+  * 國科會一般計畫匹配：`evaluateNstcCandidates()` — 依科學問題匹配 H03/E11；PI 身分缺失為 UNKNOWN 非 FAIL（T22）；校內與官方期限分離。
+  * 教學實踐匹配：`evaluateMoeTprCandidates()` — 課程-問題-介入-成果鏈；基線缺失標 PENDING_BASELINE 非行政資格否決（T23-T24）；115 學年度。
+  * 官方規則快照：`buildOfficialRuleSnapshots()` — 國科會作業要點與教育部教學實踐作業要點，民國/西元年分離。
+- **測試**：`scripts/verify-stage03-full-batch-b.ts` 24/24 PASS、tsc 0。
+- **交付**：`docs/rebuild/stage03-full-batch-b.md`。
