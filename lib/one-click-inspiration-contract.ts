@@ -6,8 +6,12 @@
 
 export const ONE_CLICK_INSPIRATION_CONTRACT = "one-click-inspiration/1.0.0" as const;
 export const RESEARCH_FOCUS_MAX_LENGTH = 200 as const;
-export const CANDIDATE_COUNT = 10 as const;
-export const TOP3_COUNT = 3 as const;
+export const DEFAULT_CANDIDATE_COUNT = 10 as const;
+export const CANDIDATE_COUNT = DEFAULT_CANDIDATE_COUNT; // backward compatibility alias
+export const MAX_CANDIDATE_COUNT = 12 as const;
+export const MIN_CANDIDATE_COUNT = 1 as const;
+export const DEFAULT_TOP3_COUNT = 3 as const;
+export const TOP3_COUNT = DEFAULT_TOP3_COUNT; // backward compatibility alias
 export const CANDIDATE_OUTPUT_LIMIT_BYTES = 192_000 as const;
 
 export const RESEARCH_GOALS = ["AUTO", "JOURNAL", "SSCI", "NSTC", "THREE_YEAR"] as const;
@@ -115,7 +119,7 @@ export function parseInspirationEnvelope(content: string): { ok: true; value: { 
   } catch {
     return { ok: false, code: "one_click_inspiration_json_invalid", stage: "JSON_PARSE", recoverableFields: ["candidates"] };
   }
-  if (!record(value) || !Array.isArray(value.candidates) || value.candidates.length !== CANDIDATE_COUNT) {
+  if (!record(value) || !Array.isArray(value.candidates) || value.candidates.length < MIN_CANDIDATE_COUNT || value.candidates.length > MAX_CANDIDATE_COUNT) {
     return { ok: false, code: "one_click_inspiration_shape_invalid", stage: "TOP_LEVEL_SHAPE", recoverableFields: ["candidates"] };
   }
   const judgment = modelText(value.judgment, 2_000);
@@ -123,7 +127,8 @@ export function parseInspirationEnvelope(content: string): { ok: true; value: { 
   const evidenceStatus = value.evidenceStatus === "UNVERIFIED" || value.evidenceStatus === "NEEDS_VERIFICATION" ? value.evidenceStatus : "UNVERIFIED";
   const evidenceNote = modelText(value.evidenceNote, 300) || "";
   const candidates: InspirationCandidate[] = [];
-  for (let index = 0; index < CANDIDATE_COUNT; index += 1) {
+  const candidateCount = value.candidates.length;
+  for (let index = 0; index < candidateCount; index += 1) {
     const item = value.candidates[index];
     if (!record(item)) return { ok: false, code: "one_click_inspiration_candidate_invalid", stage: "FIELD_VALUE", recoverableFields: [`candidates.${index}`] };
     const titleZh = modelText(item.titleZh, 300);
@@ -141,12 +146,13 @@ export function parseInspirationEnvelope(content: string): { ok: true; value: { 
     }
     candidates.push({ candidateId: `inspiration_${index + 1}`, titleZh, titleEn, researchQuestion, literatureGap, innovation, theory: theory || "待確認", method, feasibility: feasibility || "待確認", venue: venue || "待確認", score });
   }
-  if (!Array.isArray(value.top3) || value.top3.length !== TOP3_COUNT) {
+  const expectedTopCount = Math.min(DEFAULT_TOP3_COUNT, candidates.length);
+  if (!Array.isArray(value.top3) || value.top3.length < 1 || value.top3.length > expectedTopCount) {
     return { ok: false, code: "one_click_inspiration_top3_invalid", stage: "FIELD_VALUE", recoverableFields: ["top3"] };
   }
   const roles: InspirationTop3Entry["role"][] = ["PRIORITY", "FASTEST", "PROJECT_SCALE"];
   const top3: InspirationTop3Entry[] = [];
-  for (let index = 0; index < TOP3_COUNT; index += 1) {
+  for (let index = 0; index < value.top3.length; index += 1) {
     const item = value.top3[index];
     if (!record(item)) return { ok: false, code: "one_click_inspiration_top3_invalid", stage: "FIELD_VALUE", recoverableFields: [`top3.${index}`] };
     const candidateId = modelText(item.candidateId, 80) || `inspiration_${index + 1}`;
