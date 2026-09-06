@@ -250,3 +250,12 @@
   * 改為單一輕量導引列：「💡 尚未有具體方向？前往『老麥・一鍵靈感泉源』依三大目標生成 →」（`onNavigateToInspiration`）。
   * 雙向流轉串接：選題實驗室 → 一鍵靈感；一鍵靈感單題送入 → 預填 `researchDirection` 回選題實驗室；多選比較 → 取首題方向帶回。
 - **實機驗證**：新導引列 FOUND、舊 chips 已消失、`onSendToTopicLab` 接點在位；login 200、health 200、deployment RUNNING。
+
+## V3-U03-R2 首頁前排研究路徑 Roadmap（2026-09-06 02:31 UTC，commit `366d17d` + 部署 `6a9ccf2d97cff752f5268aab`）
+- **使用者指定樣式**（附圖）：「RESEARCH LIFECYCLE 圓點時間軸 + RESEARCH PATH 橫向卡片」雙區塊。
+- **新元件** `components/ResearchPathRoadmap.tsx`：
+  * 上區塊 RESEARCH LIFECYCLE：S0–S9 圓點時間軸（stageDefinitions），目前 Stage 青綠色實心高亮＋進度線填充至 active。
+  * 下區塊 RESEARCH PATH：從前沿雷達到正式送件的橫向可捲動卡片（researchPathStations 11 站），目前位置青綠高亮＋「● 目前位置」標記。
+  * 三目標切換 tabs（僅檢視，不改 GoalContext）；雷達/一鍵靈感快捷按鈕；卡片可點擊導航。
+- **整合位置**：首頁 renderOverview **最前排**（Home2WorkbenchOverview 之前，首屏一目了然，規格 §5）。
+- **實機驗證**：login 200 / health 200；六個樣式標記全數 FOUND。
