@@ -236,3 +236,9 @@
   * `docs/rebuild/phase-03-r2-test-report.md` — 40 項驗收（T01–T40）分類：26 LIVE、9 REGRESSION、5 POLICY、0 BLOCKED。
   * 累計契約測試：V3-U03-R1 (89) + V3-U03-R2 (51: A15+B18+C18) = **140 PASS, 0 FAIL, tsc 0**。
 - **驗收狀態名稱**：`GLOBAL_THREE_GOAL_WORKFLOW_INTEGRATION_VERIFIED`（工程驗收，非專案科研完成）。
+
+## V3-U03-R2 正式站部署上線（2026-09-06 01:32 UTC，使用者授權）
+- **部署**：Zeabur zip → deployment **`6a9cc150aad15df0678d3ec7` RUNNING**（01:32 UTC，最新）。
+- **實機驗證**：`/login` 200、root 307→login、`/api/health` 200。
+- **容器內確認新代碼在位**：`ResearchWorkflowLightPanel`（流程燈號面板）、「研究流程與完成燈號」文案、`JOURNAL_SCI_SSCI`（三目標新 enum）、「教育部教學實踐研究計畫」（MOE_TPR UI 文案）、`research-workflow-registry` 全數 FOUND。
+- **部署前驗證**：140/140 契約測試 PASS、tsc 0、git 工作樹乾淨。
