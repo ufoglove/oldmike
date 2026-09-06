@@ -218,3 +218,11 @@
 - **消除前端手寫重複陣列**：`components/OneClickInspiration.tsx` 改為直接引用 `ResearchGoalRegistry`。
 - **向後相容與歷史保護**：`migrateLegacyGoal()` 完整保留 `rawLegacyValue`，不破壞既有專案與鎖定快照。
 - **測試**：`scripts/verify-stage03-r2-batch-a.ts` 15/15 PASS、tsc 0；交付 `docs/rebuild/phase-03-three-goal-registry.md`。
+
+## V3-U03-R2 批次 B：首頁流程圖與完成燈號（2026-09-06，commit `a904fc8` + `2b95437`）
+- **Workflow Registry**：`lib/research-workflow-registry.ts` — 三路線模板（JOURNAL 20 節點 / NSTC 19 / MOE_TPR 19）＋共用骨幹（目標→雷達(可選)→靈感(可選)→選題→導航→藍圖→文獻→理論(適用時)→設計）；穩定 node_id＋前置＋gate；10 狀態（NOT_STARTED/IN_PROGRESS/AWAITING_INPUT/AWAITING_APPROVAL/BLOCKED/FAILED/COMPLETED_VALID/STALE/NOT_APPLICABLE/MODULE_UNAVAILABLE）。
+- **進度口徑**（§6）：`computeWorkflowProgress()` 只算適用必要節點；選填不阻擋；未建置必要模組留在分母；共享節點算一次。
+- **首頁燈號面板**：`components/ResearchWorkflowLightPanel.tsx` — 流程圖/清單雙視圖；綠燈只由後端有效 completion snapshot 決定（開頁/儲存/鎖定/建站測試不點燈）；ARIA 標籤；下一步可導航。
+- **整合**：`GuidedResearchCenter.renderOverview` 加入面板（目標取自 project outputTrack，缺省 JOURNAL_SCI_SSCI）。
+- **測試**：`verify-stage03-r2-batch-b.ts` 18/18 PASS、tsc 0；交付 `docs/rebuild/phase-03-home-workflow-lights.md`。
+- **誠實限制**：目前首頁 progress 傳 `[]`（全 NOT_STARTED），真實 completion 串接在批次 C/D 以 stage-operation snapshot 注入——未造假綠燈。
