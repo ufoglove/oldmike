@@ -33,6 +33,8 @@ import ApplicationPackageStudio from "./ApplicationPackageStudio";
 import ProjectTrashCenter from "./ProjectTrashCenter";
 import OldMikeAssistControl, { OldMikeAssistWholeS0Control } from "./OldMikeAssistControl";
 import Home2WorkbenchOverview from "./home2/Home2WorkbenchOverview";
+import ResearchWorkflowLightPanel from "./ResearchWorkflowLightPanel";
+import { PRIMARY_GOAL_IDS, type PrimaryGoalId } from "@/lib/research-goal-registry";
 import { canonicalDomains, outputTrackIds, researchPathStations, stageDefinitions, stageNumberFromKey, type CanonicalDomain, type OutputTrackId } from "@/lib/research-config";
 import { CONFIRMATION_PHRASE, normalizeS0Intake, type FieldErrors, type ProjectPreview, type ProjectSummary, type S0Intake } from "@/lib/project-contract";
 import type { EvidenceCenterResponse } from "@/lib/assist-contract";
@@ -450,6 +452,14 @@ async function logout() { await fetch("/api/auth/sign-out", { method: "POST", he
         onNavigate={(id) => go(navId(id))}
         onTrashed={handleProjectTrashed}
       />
+      {/* V3-U03-R2 研究流程與完成燈號：綠燈只由後端有效 completion snapshot 決定（非開頁/儲存/鎖定） */}
+      {currentProject && (
+        <ResearchWorkflowLightPanel
+          goalId={(PRIMARY_GOAL_IDS.includes(currentProject.outputTrack as PrimaryGoalId) ? currentProject.outputTrack : "JOURNAL_SCI_SSCI") as PrimaryGoalId}
+          progress={[]}
+          onNavigate={(nodeId) => { const station = researchPathStations.find((s) => s.key === nodeId || s.navId === nodeId); if (station) go(navId(station.navId)); }}
+        />
+      )}
       {/* 保留：狀態不是展示分數 + 已知/未知/風險交接（既有模組化 panel，不回歸） */}
       <div className="v13-two-col"><Panel kicker="證據／風險／人工門檻" title="狀態不是展示分數"><div className="v13-status-grid"><div><small>Evidence</small><strong>{statusText(currentProject?.evidenceStatus || "UNVERIFIED")}</strong><SourceBadge value={currentProject?.evidenceStatus || "UNVERIFIED"} /></div><div><small>Risk</small><strong>{statusText(currentProject?.riskStatus || "UNVERIFIED")}</strong><SourceBadge value={currentProject?.riskStatus || "UNVERIFIED"} /></div><div><small>Human Gate</small><strong>{statusText(humanGateStatus)}</strong><SourceBadge value={humanGateStatus} /></div></div><p className="v13-muted">缺少正式 metadata 時只顯示保守的未驗證與待人工確認狀態，不推定研究內容或完成度。</p></Panel><Panel kicker="可追溯交接" title="已知、未知與風險"><div className="v13-list"><p><b>已知</b>{currentProject?.known?.[0] || (currentProject ? "已確認 DB-backed Project ID 與 tenant scope" : "尚未建立正式專案")}</p><p><b>未知</b>{currentProject?.unknown?.[0] || "研究問題與外部證據尚未 fresh verification"}</p><p><b>風險</b>{currentProject?.risks?.[0] || "倫理、隱私、授權與資料治理尚未審查"}</p></div><button type="button" className="text-button" onClick={() => go(currentProject ? "evidence" : "topic-lab")}>{currentProject ? "查看 evidence ledger" : "先進入選題實驗室"} <Icon name="arrow" size={13} /></button></Panel></div>
     </>;
