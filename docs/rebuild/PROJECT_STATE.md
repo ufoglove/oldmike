@@ -1,3 +1,23 @@
+## V3-U17-FULL：第十七階段「翻譯、學術潤稿、術語一致性與語言品質」建置完成（2026-09-06 UTC）
+- **規格基準**：`docs/stage17/spec-v3-4.0.md`（依使用者 Telegram 訊息內文收錄九節）。
+- **上游 Gate 對照**：`SCIENTIFIC_REVISION_READY_FOR_LANGUAGE`；`USE_BLOCKED`／`SOURCE_STALE` 的 scientificReleaseState 阻擋語言處理；不要求固定稿件 v1/v2。
+- **核心實體與契約**：`lib/language-quality-v3-contract.ts`（LanguageWorkOrder、LanguageSegment（UTF-8 bytes）、FidelityCheckKind 15 種、FidelityIssue、TermBinding、ProviderCapability、LanguageQualitySnapshot、Stage18ReceiverState、17 個錯誤碼）。
+- **核心服務**：`lib/language-quality-v3-service.ts`：承接 U16 `ScientificReviewSnapshot` 零重複輸入；scope 檢查（partial 不自動升整稿）；UTF-8 分段；保真檢查（數值/方向/分母/時點/否定/因果強度/確認探索/群組互換，超越 token 數量）；術語檢查；Provider capability manifest（DeepL Translate/Write、老麥 MOCK、LanguageTool、Google/Azure fallback 如實標示）；QA 聚合；`LanguageQualitySnapshot`（stageKey=V3-U17，nextStageId=final-compliance）與 Stage 18 receiver。
+- **後端 API 路由**（`/api/projects/:projectId/language-quality-v3/*`）：
+  * initialize（ACL＋body/DB 讀 U16 快照＋USE_BLOCKED/SOURCE_STALE 阻擋）
+  * segments（scope 強制、UTF-8 分段、超長標記）
+  * check（保真/術語/QA，FATAL 不得 PASS）
+  * adopt（採用前後端重驗保真，FIDELITY_FATAL_ISSUE 阻擋；target 鎖不被批次覆寫）
+  * complete（保真+術語+QA→LanguageQualitySnapshot→持久化 stageId=`translation-polish`，idempotencyKey=`comp_lq_<snapshotId>`＋U18 receiver）
+  * export（json／fidelity-report／qa-report／alignment／markdown，其餘 UNSUPPORTED）
+  * receiver（U18 可重開接收頁，不空白、不循環 Gate）
+- **驗收證據（實際執行）**：
+  * `scripts/verify-stage17-full-60-items.ts`：**60/60 PASS，4 NOT_RUN**（Live DeepL、Live LanguageTool、DOCX/PDF/LaTeX round-trip、UI 深度整合）。
+  * `scripts/verify-stage17-stage18-consumer-contract.ts`：**45/45 PASS**。
+  * `npx tsc --noEmit`：0 errors；回歸：U16（60/60）、U15（60/60）、U14（60/60）、U13（48/48）。
+- **誠實標記**：DeepL Translate/Write、LanguageTool 無 Live key 如實標 NOT_CONFIGURED（不假裝接通）；老麥語義模型為本地確定性規則（MOCK）；語言版就緒≠正式送件、全作者同意或期刊接受；fixture 通過不代表真實稿件已翻譯；未部署 Zeabur、未跑正式 DB migration。
+- **停止邊界**：完成第十七階段後停止，等待 V3-U18「目標期刊／計畫最終合規、送件文件與成果包」指令。
+
 ## V3-U16-FULL-R2：第十六階段完整規格補強（2026-09-06 UTC，第二輪）
 - **規格基準**：`docs/stage16/spec-v3-4.0.md`（760 行完整版；SHA-256 `29157b04…0c4583c9`，與使用者附檔逐字一致）。
 - **完整規格補強（相較第一輪簡版）**：
