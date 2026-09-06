@@ -46,26 +46,27 @@ export function consensusCapabilitySnapshot(): ProviderCapabilitySnapshot {
   };
 }
 
-/** Ai4Scholar: no adapter or account contract test yet — documented platform existence only. */
+/** Ai4Scholar: official endpoint discovered from docs + authorized full-key LIVE probe 2026-09-06. */
 export function ai4ScholarCapabilitySnapshot(): ProviderCapabilitySnapshot {
   return {
     provider: "AI4SCHOLAR",
-    snapshotVersion: "ai4scholar/0.0.0",
+    snapshotVersion: "ai4scholar/1.0.0",
     checkedAt: FEDERATED_CAPABILITY_CHECKED_AT,
+    billingPoolId: "ai4scholar_account_pool",
     capabilities: {
-      search: cap("unknown", "platform lists multi-source search; no contract test run"),
-      metadata: cap("unknown"),
+      search: cap("live_verified", "GET https://ai4scholar.net/graph/v1/paper/search (Bearer) HTTP 200 2026-09-06 with full user key; total 881 for query; response shape {total,offset,next,data[]}"),
+      metadata: cap("live_verified", "paperId/title/year observed in live payload; upstream multi-source aggregated (S2/PubMed/Google Scholar per official docs)"),
       references: cap("unknown"),
-      citations: cap("unknown"),
-      abstract: cap("unknown"),
-      fulltext_or_chunks: cap("unknown"),
+      citations: cap("live_verified", "citationCount field observed in live payload (fields param)"),
+      abstract: cap("unknown", "abstract availability varies by upstream; not verified"),
+      fulltext_or_chunks: cap("unknown", "docs list fulltext-search feature; not contract-tested, do not claim"),
       publication_filter: cap("unknown"),
       study_type_filter: cap("unknown"),
       exact_venue_filter: cap("unknown"),
       ranking_venue_preference: cap("unknown"),
-      aggregation: cap("unknown"),
-      usage_reporting: cap("unknown"),
-      write_scope: cap("unknown"),
+      aggregation: cap("unknown", "multi-source aggregation is retrieval-side; not a metrics source"),
+      usage_reporting: cap("live_verified", "GET /api/credits HTTP 200 2026-09-06: membership plan B active, credits_used 144, total_available 1906"),
+      write_scope: cap("unsupported", "read-only search + credits; no write endpoints used"),
     },
   };
 }
@@ -153,10 +154,62 @@ export function capabilitySnapshots(): ProviderCapabilitySnapshot[] {
 }
 
 /**
- * Not-yet-live adapter factory: returns an adapter whose search() throws a typed error
- * until an authorized live contract test binds a real endpoint. This keeps callers honest:
- * no fabricated LIVE results; the UI/report must show BLOCKED / NOT_RUN.
+ * Ai4Scholar adapter bound to the official endpoint discovered + verified 2026-09-06.
+ * Endpoint: GET https://ai4scholar.net/graph/v1/paper/search (Bearer auth).
+ * Response shape verified live: { total, offset, next, data: [{ paperId, title, year, ... }] }.
+ * Key is read from env at call time (AI4SCHOLAR_API_KEY); never logged or written.
  */
+export function createAi4ScholarAdapter(fetcher: typeof fetch = fetch): FederatedLiteratureAdapter {
+  return {
+    providerId: "AI4SCHOLAR",
+    getCapabilities() {
+      return ai4ScholarCapabilitySnapshot();
+    },
+    async search(spec: QuerySpec, signal?: AbortSignal) {
+      const apiKey = process.env.AI4SCHOLAR_API_KEY;
+      if (!apiKey) throw new Error("AI4SCHOLAR_KEY_MISSING:AI4SCHOLAR:env AI4SCHOLAR_API_KEY not set");
+      const endpoint = new URL("https://ai4scholar.net/graph/v1/paper/search");
+      endpoint.searchParams.set("query", spec.naturalLanguageQuery);
+      endpoint.searchParams.set("limit", String(spec.limit && spec.limit > 0 && spec.limit <= 20 ? spec.limit : 10));
+      const requestedFields = ["title", "year", "citationCount"];
+      endpoint.searchParams.set("fields", requestedFields.join(","));
+      const response = await fetcher(endpoint, {
+        method: "GET",
+        headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json", "User-Agent": "oldmike-research-portal/1.0" },
+        cache: "no-store",
+        redirect: "error",
+        signal,
+      });
+      if (!response.ok) throw new Error(`AI4SCHOLAR_HTTP_${response.status}:AI4SCHOLAR:search failed with ${response.status}`);
+      const value = (await response.json()) as {
+        total?: number;
+        offset?: number;
+        data?: Array<{ paperId?: string; title?: string; year?: number; citationCount?: number }>;
+      };
+      const records = (Array.isArray(value.data) ? value.data : []).map((item, index) => ({
+        retrievalProvider: "AI4SCHOLAR" as const,
+        providerEndpointVersion: "graph/v1 paper/search",
+        upstreamId: typeof item.paperId === "string" ? item.paperId : `ai4:${index}`,
+        upstreamDatabase: "ai4scholar-aggregated",
+        retrievedAt: new Date().toISOString(),
+        publicationDate: typeof item.year === "number" ? `${item.year}-01-01` : null,
+        publicationDatePrecision: typeof item.year === "number" ? ("YEAR" as const) : ("UNKNOWN" as const),
+        responseHash: "",
+        rights: "UNKNOWN" as const,
+        returnedFields: requestedFields,
+        reportedCitationCount: typeof item.citationCount === "number" ? item.citationCount : null,
+      }));
+      return {
+        records,
+        canonicalCandidates: (Array.isArray(value.data) ? value.data : []).map((item) => ({
+          title: item.title || "",
+          year: typeof item.year === "number" ? item.year : null,
+          authors: [],
+        })),
+      };
+    },
+  };
+}
 export function createPendingLiveAdapter(providerId: ScholarlyProviderId): FederatedLiteratureAdapter {
   return {
     providerId,
