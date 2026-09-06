@@ -1,3 +1,20 @@
+## V3-U16-FULL-R2：第十六階段完整規格補強（2026-09-06 UTC，第二輪）
+- **規格基準**：`docs/stage16/spec-v3-4.0.md`（760 行完整版；SHA-256 `29157b04…0c4583c9`，與使用者附檔逐字一致）。
+- **完整規格補強（相較第一輪簡版）**：
+  * ReviewCoverageMatrix（§5）：章節/主張/結果/方法/引用/表圖/倫理逐項，未審標 NOT_ASSESSED，不產生假綠勾（T10）。
+  * 9 角色庫（§8）：EDITOR_TRIAGE…REVIEWER_2_CHALLENGER，按文章類型啟用，多角色為模擬非真人獨立驗證。
+  * ReviewCapabilityManifest（§7）：Zotero／citeproc／LLM 生成式審查如實標 UNSUPPORTED。
+  * ScientificFinding 完整欄位（§18）：category（12 類）、finding_origin、source_excerpt、evidence_for/against、coverage_limit、disposition、adjudicated_by。
+  * ScientificReviewPackage + LanguagePolishingHandoffPackage（§31）：共用 refs 不複製 Raw。
+  * scientificReleaseState（§30）：DRAFT_REVIEW…USE_BLOCKED；fullManuscriptLanguageAllowed + languageAllowedScopeRefs 精確 scope。
+  * 20 個規格錯誤碼（§32）收錄於契約。
+- **驗收證據（實際執行）**：
+  * `scripts/verify-stage16-full-60-items.ts`：**60/60 PASS，3 NOT_RUN**（UI 深度整合、LLM live Reviewer adapter、DOCX/PDF/LaTeX round-trip）。
+  * `scripts/verify-stage16-stage17-consumer-contract.ts`：**61/61 PASS**（完整規格擴充斷言：角色庫、coverage、capability、packages、release state）。
+  * `npx tsc --noEmit`：0 errors；回歸：U15（60/60）、U14（60/60）、U13（48/48）。
+- **誠實標記**：所有 AI 審查輸出標 SIMULATED REVIEW；Reviewer #2 為確定性規則引擎；未部署 Zeabur、未跑正式 DB migration；fixture 通過不代表真實稿件審查完成；綠燈＝內部科學審查完成，非期刊接受。
+- **停止邊界**：完成第十六階段完整版後停止，等待 V3-U17「翻譯、學術潤稿、術語一致性與語言品質」指令。
+
 ## V3-U16-FULL：第十六階段「老麥科學內容審查、Reviewer #2壓力測試與逐項修訂」建置完成（2026-09-06 UTC）
 - **規格基準**：`docs/stage16/spec-v3-4.0.md`（v3.4.0；依使用者 Telegram 訊息內文收錄，非附檔）。
 - **上游 Gate 對照**：`MANUSCRIPT_SCIENTIFIC_DRAFT_READY_FOR_REVIEW`（正式）；`WRITING_SCOPE_AND_SOURCES_READY`／`PLANNING_OUTLINE` 視為規劃模式，initialize 直接阻擋正式審查；不要求固定稿件 v1 字串。

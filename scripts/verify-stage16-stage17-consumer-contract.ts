@@ -27,6 +27,12 @@ import {
   buildStage17ReceiverState,
   runScientificMechanicalQa,
   buildScientificReviewWorkspaceFromStage15,
+  REVIEW_ROLE_LIBRARY,
+  enabledRolesForArticleType,
+  buildReviewCoverageMatrix,
+  buildReviewCapabilityManifest,
+  buildScientificReviewPackage,
+  buildLanguagePolishingHandoffPackage,
 } from "../lib/scientific-review-v3-service.ts";
 import {
   type ScientificFinding,
@@ -104,7 +110,7 @@ report("S17-M02", mech.checks.length >= 6, "mechanical QA covers all determinist
 // ---- 3. Reviewer #2 challenges
 const raw = generateReviewer2Challenges({ snapshot: sourceSnapshot });
 report("S17-R1", raw.length >= 3, "reviewer #2 produces ≥3 constructive challenges");
-report("S17-R2", raw.every((f) => f.reviewerRole === "REVIEWER_2" && f.simulated === true), "all challenges are SIMULATED REVIEW");
+report("S17-R2", raw.every((f) => f.reviewerRole === "REVIEWER_2_CHALLENGER" && f.simulated === true), "all challenges are SIMULATED REVIEW");
 report("S17-R3", raw.every((f) => f.alternativeExplanation && f.minimalRevisionPath), "each challenge has alternative explanation + minimal revision path");
 report("S17-R4", raw.every((f) => f.severity === "MAJOR" || f.severity === "MINOR"), "challenges are constructive, none demand large-N RCT");
 
@@ -212,6 +218,48 @@ const snapshot2 = buildScientificReviewSnapshot({
   reviewer2Provided: true,
 });
 report("S17-S12", snapshot.snapshotId !== snapshot2.snapshotId, "snapshot id unique per build");
+
+// ---- Full-spec §31 packages & §5 coverage / §7 capability manifest
+try {
+  const roleLib = REVIEW_ROLE_LIBRARY;
+  report("S17-ROL1", roleLib.length === 9, "role library has 9 roles (spec §8)");
+  const enabledForMoe = enabledRolesForArticleType("TEACHING_PRACTICE_RESEARCH");
+  report("S17-ROL2", enabledForMoe.some((r) => r.roleId === "PRACTICE_APPLICATION_REVIEWER"), "MOE teaching paper enables practice application reviewer");
+
+  const coverage = buildReviewCoverageMatrix({ reviewRunId: ws.reviewRunId, snapshot: sourceSnapshot, roles: roleLib });
+  report("S17-COV1", coverage.rows.length >= 6, "coverage matrix covers at least 6 section rows");
+  report("S17-COV2", coverage.rows.every((r) => r.status === "NOT_ASSESSED"), "unassessed sections are NOT_ASSESSED (no fake green check, spec T10)");
+  report("S17-COV3", coverage.rows.some((r) => r.reviewMethod === "DETERMINISTIC_CHECK"), "coverage distinguishes deterministic checks");
+
+  const capability = buildReviewCapabilityManifest({ reviewRunId: ws.reviewRunId });
+  report("S17-CAP1", capability.entries.some((e) => e.kind === "UNSUPPORTED" && /Zotero|citeproc|LLM/.test(e.label)), "capability manifest honestly marks Zotero/citeproc/LLM as UNSUPPORTED");
+  report("S17-CAP2", capability.entries.some((e) => e.kind === "RULE_EXECUTED"), "capability manifest lists executed rules");
+
+  const srvp = buildScientificReviewPackage({ reviewRunId: ws.reviewRunId, reviewSnapshot: snapshot, coverageMatrixRef: coverage.matrixRef, capabilityManifestRef: capability.manifestRef, findings });
+  report("S17-PKG1", srvp.packageId.startsWith("srvp_"), "scientific review package id prefix");
+  report("S17-PKG2", srvp.workOrderRef === snapshot.workOrderId, "package links work order");
+  report("S17-PKG3", srvp.coverageMatrixRef === coverage.matrixRef, "package links coverage matrix");
+  report("S17-PKG4", srvp.findingRegistryRef.startsWith("finding_registry_"), "package links finding registry");
+
+  const langPack = buildLanguagePolishingHandoffPackage({ reviewRunId: ws.reviewRunId, reviewSnapshot: snapshot });
+  report("S17-LP1", langPack.packageId.startsWith("langpack_"), "language handoff package id prefix");
+  report("S17-LP2", langPack.forbiddenExternalContent.some((s) => /IdentityVault|RawRows|逐字稿/.test(s)), "language package forbids sensitive externals");
+  report("S17-LP3", langPack.fullManuscriptLanguageAllowed === snapshot.fullManuscriptLanguageAllowed, "language package mirrors full/scope language allow");
+
+  report("S17-S13", snapshot.scientificReleaseState === "SCIENTIFIC_CONTENT_APPROVED_FOR_LANGUAGE", "snapshot scientificReleaseState defaults to approved-for-language when no blockers");
+  report("S17-S14", snapshot.fullManuscriptLanguageAllowed === true, "snapshot fullManuscriptLanguageAllowed true when approved");
+  report("S17-S15", snapshot.languageAllowedScopeRefs.length >= 6, "snapshot language scope covers sections");
+  report("S17-S16", snapshot.scientificReviewPackageRef.startsWith("srvp_") && snapshot.languageHandoffPackageRef.startsWith("langpack_"), "snapshot references both packages");
+  report("S17-S17", snapshot.coverageMatrixRef === coverage.matrixRef, "snapshot references coverage matrix");
+  report("S17-S18", snapshot.capabilityManifestRef === capability.manifestRef, "snapshot references capability manifest");
+  report("S17-S19", Array.isArray(snapshot.roleRunRefs) && snapshot.roleRunRefs.length > 0, "snapshot references role runs");
+  report("S17-S20", Array.isArray(snapshot.adjudicationRefs), "snapshot references adjudications");
+
+  // Error codes (spec §32)
+  report("S17-ERR1", snapshot.scientificReleaseState !== "USE_BLOCKED", "no block on approved snapshot");
+} catch (e) {
+  report("S17-EXT", false, `full-spec extensions errored: ${e instanceof Error ? e.message : String(e)}`);
+}
 
 const receiver = buildStage17ReceiverState({ snapshot, findings });
 report("S17-RC1", receiver.receiverVersion === "translation-polish-receiver/1.0.0", "receiver version stable");
