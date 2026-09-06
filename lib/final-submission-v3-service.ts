@@ -27,11 +27,175 @@ import {
   type FinalSubmissionPackageSnapshot,
   type Stage19ReceiverState,
   type SubmissionRoute,
+  type FinalPackageWorkOrder,
+  type TargetOption,
+  type RuleVerificationStatus,
+  type SubmissionFieldMap,
+  type BundleManifest,
+  type BundleFile,
+  type AudienceVisibility,
+  type PackageState,
+  type ReadyForAction,
 } from "./final-submission-v3-contract.ts";
 import { type LanguageQualitySnapshot } from "./language-quality-v3-contract.ts";
 
 function sha256(input: unknown): string {
   return createHash("sha256").update(typeof input === "string" ? input : JSON.stringify(input)).digest("hex");
+}
+
+// -------------------------------------------------------------
+// §4 FinalPackageWorkOrder builder
+// -------------------------------------------------------------
+export function buildFinalPackageWorkOrder(params: {
+  projectId: string;
+  documentId: string;
+  documentPurpose: string;
+  route: SubmissionRoute;
+  formalComplianceAllowed: boolean;
+  complianceAllowedScopeRefs: string[];
+}): FinalPackageWorkOrder {
+  const { projectId, documentId, documentPurpose, route, formalComplianceAllowed, complianceAllowedScopeRefs } = params;
+  const target: TargetOption =
+    route === "JOURNAL_SCI_SSCI" ? "JOURNAL_INITIAL_SUBMISSION" : route === "NSTC_GENERAL" ? "NSTC_GENERAL_APPLICATION" : route === "MOE_TPR" ? "MOE_TPR_APPLICATION" : "LOCAL_PREFLIGHT";
+  return {
+    workOrderId: `wfc_${projectId}_${documentId}`.slice(0, 64),
+    projectId,
+    documentId,
+    documentPurpose,
+    route,
+    target,
+    targetJournalOrProgram: "TBD（依目標確認）",
+    targetYearOrCall: "TBD",
+    institution: "TBD",
+    submissionDestination: "TBD（依已驗證官方入口）",
+    allowedScopeRefs: formalComplianceAllowed ? complianceAllowedScopeRefs : [],
+    outputFormats: ["markdown", "json"],
+    audience: ["REVIEWER_VISIBLE", "EDITOR_ONLY"],
+    excludedAssets: ["IdentityVault", "RawRows", "內部 Reviewer 報告", "prompt", "API keys"],
+    wordCountScope: "依目標規則（references/附件是否計入依規則）",
+    templateVersionRef: `template_${target}_v1`,
+    externalProcessingAuthorized: false,
+    budget: 0,
+    retryLimit: 3,
+    approvalPolicyRef: `approval_policy_${target}`,
+    status: formalComplianceAllowed ? "BUILDING" : "DRAFT", // partial ⇒ DRAFT/PREFLIGHT only
+  };
+}
+
+// -------------------------------------------------------------
+// §5 Official Rule Resolver (7 verification statuses)
+// -------------------------------------------------------------
+export function resolveRuleVerificationStatus(params: {
+  sourceUrl: string;
+  effectiveDate?: string;
+  previousYearOnly?: boolean;
+  conflictDetected?: boolean;
+}): { status: RuleVerificationStatus; note: string } {
+  const { sourceUrl, effectiveDate, previousYearOnly, conflictDetected } = params;
+  if (!sourceUrl || sourceUrl.startsWith("待官方")) {
+    return { status: "SOURCE_UNAVAILABLE", note: "來源不可用；HTTP 錯誤／付費牆／API 未連不等於未公告。" };
+  }
+  if (conflictDetected) return { status: "CONFLICTING", note: "規則衝突；保存兩方文字位置與範圍，RULE_CONFLICT_NEEDS_CONFIRMATION。" };
+  if (previousYearOnly) return { status: "PREVIOUS_YEAR_REFERENCE", note: "前年度模板；本年要求未確認，可草稿但 UNKNOWN 必要要求不得標本年通過。" };
+  if (effectiveDate && new Date(effectiveDate) > new Date()) return { status: "PENDING_OFFICIAL_ANNOUNCEMENT", note: "公告生效日未到。" };
+  return { status: "VERIFIED_APPLICABLE", note: "來源可驗證且適用。" };
+}
+
+// -------------------------------------------------------------
+// §8 SubmissionFieldMap builder
+// -------------------------------------------------------------
+export function buildSubmissionFieldMap(params: { target: TargetOption; route: SubmissionRoute }): SubmissionFieldMap {
+  const { target, route } = params;
+  const common = {
+    officialSourceRef: "依 Guide/表單（待官方確認）",
+    fieldType: "text",
+    lengthLimit: 0,
+    countingConvention: "依規則",
+    valueSourceRef: "來自採用語言版",
+    requiresHumanDeclaration: false,
+    preparationState: "NOT_READY" as const,
+    outputLocation: "portal-field-map",
+  };
+  const fields: SubmissionFieldMap["fields"] = [];
+  if (route === "JOURNAL_SCI_SSCI") {
+    fields.push({ fieldRef: "title", label: "Title", ...common });
+    fields.push({ fieldRef: "abstract", label: "Abstract", ...common });
+    fields.push({ fieldRef: "keywords", label: "Keywords", ...common });
+    fields.push({ fieldRef: "authors", label: "Authors / ORCID / affiliation", ...common, requiresHumanDeclaration: true });
+    fields.push({ fieldRef: "cover_letter", label: "Cover Letter", ...common });
+    fields.push({ fieldRef: "declarations", label: "Declarations (COI/funding/ethics)", ...common, requiresHumanDeclaration: true });
+  } else if (route === "NSTC_GENERAL") {
+    fields.push({ fieldRef: "pi", label: "PI 資料與資格", ...common, requiresHumanDeclaration: true });
+    fields.push({ fieldRef: "plan_content", label: "計畫內容", ...common });
+    fields.push({ fieldRef: "budget", label: "經費（分類/年限）", ...common });
+    fields.push({ fieldRef: "work_packages", label: "工作包", ...common });
+  } else {
+    fields.push({ fieldRef: "main_course", label: "主授課程/學分", ...common });
+    fields.push({ fieldRef: "teaching_problem", label: "教學問題", ...common });
+    fields.push({ fieldRef: "assessment", label: "評量矩陣", ...common });
+    fields.push({ fieldRef: "budget", label: "補助經費", ...common });
+  }
+  return { mapId: `fieldmap_${target}`.slice(0, 64), target, fields };
+}
+
+// -------------------------------------------------------------
+// §13 / §28 Visibility & bundle split
+// -------------------------------------------------------------
+export function buildBundleManifests(params: {
+  projectId: string;
+  documents: PackageDocument[];
+  anonymizationRequired: boolean;
+}): { external: BundleManifest; internal: BundleManifest } {
+  const { projectId, documents, anonymizationRequired } = params;
+  const now = Date.now().toString(36);
+  const externalFiles: BundleFile[] = documents.map((d) => ({
+    fileId: `ext_${d.documentId}`,
+    logicalRole: d.kind,
+    recipientAudience: d.kind === "TITLE_PAGE" && anonymizationRequired ? ("EDITOR_ONLY" as AudienceVisibility) : ("REVIEWER_VISIBLE" as AudienceVisibility),
+    sourceEditionRef: d.documentId,
+    sourceHash: d.contentHash || "",
+    exportHash: d.contentHash || "",
+    filename: d.filename,
+    mime: d.format === "markdown" ? "text/markdown" : d.format === "json" ? "application/json" : "application/octet-stream",
+    byteLength: d.byteSize,
+    pageCountOrWordCount: "依 render 結果",
+    renderer: "markdown/json",
+    anonymizationApplied: anonymizationRequired && d.kind !== "TITLE_PAGE",
+    permissionRef: "permission_check_待確認",
+    privacyStatus: "reviewer-visible 檢查待完成",
+    required: true,
+    ruleRefs: [],
+    qualityState: d.status === "LOCKED" ? "LOCKED" : d.status === "FROZEN" ? "FROZEN" : "CANDIDATE",
+    downloadAccess: "tenant ACL",
+    reviewerVisibility: (d.kind === "TITLE_PAGE" && anonymizationRequired ? "EDITOR_ONLY" : "REVIEWER_VISIBLE") as AudienceVisibility,
+  }));
+  const internalFiles: BundleFile[] = [
+    {
+      fileId: "int_rules", logicalRole: "RULE_SNAPSHOT", recipientAudience: "INTERNAL_AUDIT", sourceEditionRef: "rules",
+      sourceHash: "", exportHash: "", filename: "rules.json", mime: "application/json", byteLength: 0,
+      pageCountOrWordCount: "", renderer: "json", anonymizationApplied: false, permissionRef: "internal",
+      privacyStatus: "internal-only", required: true, ruleRefs: [], qualityState: "CANDIDATE",
+      downloadAccess: "internal ACL", reviewerVisibility: "INTERNAL_AUDIT",
+    },
+    {
+      fileId: "int_qa", logicalRole: "QA_REPORT", recipientAudience: "INTERNAL_AUDIT", sourceEditionRef: "qa",
+      sourceHash: "", exportHash: "", filename: "qa-report.json", mime: "application/json", byteLength: 0,
+      pageCountOrWordCount: "", renderer: "json", anonymizationApplied: false, permissionRef: "internal",
+      privacyStatus: "internal-only", required: true, ruleRefs: [], qualityState: "CANDIDATE",
+      downloadAccess: "internal ACL", reviewerVisibility: "INTERNAL_AUDIT",
+    },
+    {
+      fileId: "int_approvals", logicalRole: "APPROVAL_RECORDS", recipientAudience: "INTERNAL_AUDIT", sourceEditionRef: "approvals",
+      sourceHash: "", exportHash: "", filename: "approval-records.json", mime: "application/json", byteLength: 0,
+      pageCountOrWordCount: "", renderer: "json", anonymizationApplied: false, permissionRef: "internal",
+      privacyStatus: "internal-only, 不含簽名原件", required: true, ruleRefs: [], qualityState: "CANDIDATE",
+      downloadAccess: "internal ACL", reviewerVisibility: "INTERNAL_AUDIT",
+    },
+  ];
+  return {
+    external: { manifestId: `extbundle_${projectId}_${now}`, bundleKind: "EXTERNAL_SUBMISSION_BUNDLE", files: externalFiles, requiredFileReconciliationPassed: false, createdAt: new Date().toISOString() },
+    internal: { manifestId: `intbundle_${projectId}_${now}`, bundleKind: "INTERNAL_COMPLIANCE_EVIDENCE_PACKAGE", files: internalFiles, requiredFileReconciliationPassed: false, createdAt: new Date().toISOString() },
+  };
 }
 
 // -------------------------------------------------------------
@@ -378,6 +542,11 @@ export function buildFinalSubmissionPackageSnapshot(params: {
   renderQa: { passed: boolean; issues: string[] };
   freezeConfirmed: boolean;
   packageLocked: boolean;
+  workOrder?: FinalPackageWorkOrder;
+  fieldMap?: SubmissionFieldMap;
+  externalBundle?: BundleManifest;
+  internalEvidencePackage?: BundleManifest;
+  readyForAction?: ReadyForAction;
 }): FinalSubmissionPackageSnapshot {
   const {
     workspaceId, projectId, workOrderId, sourceSnapshot, route, profile, rules,
@@ -385,17 +554,52 @@ export function buildFinalSubmissionPackageSnapshot(params: {
     freezeConfirmed, packageLocked,
   } = params;
 
+  const workOrder = params.workOrder ?? buildFinalPackageWorkOrder({
+    projectId, documentId: `doc_${projectId}`, documentPurpose: sourceSnapshot.scope.task,
+    route, formalComplianceAllowed: sourceSnapshot.formalComplianceAllowed, complianceAllowedScopeRefs: sourceSnapshot.complianceAllowedScopeRefs,
+  });
+  const fieldMap = params.fieldMap ?? buildSubmissionFieldMap({ target: workOrder.target, route });
+  const bundles = params.externalBundle && params.internalEvidencePackage
+    ? { external: params.externalBundle, internal: params.internalEvidencePackage }
+    : buildBundleManifests({ projectId, documents, anonymizationRequired: route === "JOURNAL_SCI_SSCI" });
+
   const snapshotId = `fspsnap_${projectId}_${Date.now().toString(36)}_${randomUUID().slice(0, 8)}`;
   const pending = requiredApprovals - approvals.length;
   const allQaPassed = anonymizationQa.passed && referencesQa.passed && renderQa.passed;
+  const lockOk = packageLocked && freezeConfirmed && pending <= 0 && allQaPassed;
+
+  // §29 state machine
+  const packageState: PackageState = !sourceSnapshot.formalComplianceAllowed
+    ? "PARTIAL_PREFLIGHT"
+    : !freezeConfirmed
+      ? (allQaPassed ? "QA_PASSED" : "QA_ISSUES")
+      : pending > 0
+        ? "APPROVAL_PENDING"
+        : lockOk
+          ? "LOCKED_READY"
+          : "READY_FOR_RELEASE";
+
+  // §30 ready_for_action
+  const readyForAction: ReadyForAction =
+    params.readyForAction ??
+    (!sourceSnapshot.formalComplianceAllowed
+      ? "PREFLIGHT_ONLY"
+      : !lockOk
+        ? (allQaPassed ? "DRAFT_PACKAGE_WITH_GAPS" : "PREFLIGHT_ONLY")
+        : route === "JOURNAL_SCI_SSCI"
+          ? "READY_FOR_AUTHOR_SUBMISSION"
+          : route === "NSTC_GENERAL"
+            ? "READY_FOR_INSTITUTIONAL_REVIEW" // institutional review precedes institutional submission
+            : "READY_FOR_INSTITUTIONAL_REVIEW");
+
   const decision: PackageReadiness =
-    !packageLocked || pending > 0 || !allQaPassed || !freezeConfirmed
-      ? "NOT_READY"
-      : route === "JOURNAL_SCI_SSCI"
-        ? "READY_FOR_AUTHOR_SUBMISSION"
-        : route === "NSTC_GENERAL"
-          ? "READY_FOR_INSTITUTIONAL_SUBMISSION"
-          : "READY_FOR_INSTITUTIONAL_SUBMISSION";
+    readyForAction === "READY_FOR_AUTHOR_SUBMISSION"
+      ? "READY_FOR_AUTHOR_SUBMISSION"
+      : readyForAction === "READY_FOR_INSTITUTIONAL_SUBMISSION"
+        ? "READY_FOR_INSTITUTIONAL_SUBMISSION"
+        : readyForAction === "READY_FOR_INSTITUTIONAL_REVIEW"
+          ? "READY_FOR_INSTITUTIONAL_REVIEW"
+          : "NOT_READY";
 
   return {
     snapshotId,
@@ -415,15 +619,23 @@ export function buildFinalSubmissionPackageSnapshot(params: {
     decision,
     decisionRationale:
       decision === "NOT_READY"
-        ? `尚未就緒：pendingApprovals=${pending}，anonymization=${anonymizationQa.passed}，references=${referencesQa.passed}，render=${renderQa.passed}，lock=${packageLocked}。`
-        : decision === "READY_FOR_AUTHOR_SUBMISSION"
-          ? "成果包已鎖定、QA 全過、作者核准齊備；僅 READY_FOR_AUTHOR_SUBMISSION（不等於 SUBMITTED 或官方核准）。"
-          : "成果包已鎖定、QA 全過、核准齊備；READY_FOR_INSTITUTIONAL_REVIEW/SUBMISSION（不等於已送件或官方核准）。",
+        ? `尚未就緒：packageState=${packageState}，readyForAction=${readyForAction}，pending=${pending}，anonymization=${anonymizationQa.passed}，render=${renderQa.passed}，lock=${packageLocked}。`
+        : `成果包就緒：${readyForAction}（不等於 SUBMITTED 或官方核准）。`,
     submissionExecutionAuthorized: false,
+    submissionStatus: "NOT_SUBMITTED_BY_THIS_STAGE",
 
     route,
     profile,
     ruleSnapshots: rules,
+
+    packageState,
+    readyForAction,
+
+    workOrder,
+    fieldMap,
+    visibilityManifest: bundles.external.files.map((f) => ({ fileId: f.fileId, audience: f.reviewerVisibility })),
+    externalBundle: bundles.external,
+    internalEvidencePackage: bundles.internal,
 
     documents,
     approvalSubjectManifest: manifest,

@@ -19,6 +19,157 @@ import { type LanguageQualitySnapshot } from "./language-quality-v3-contract.ts"
 export const FINAL_SUBMISSION_CONTRACT_VERSION = "final-submission/1.0.0" as const;
 
 // -------------------------------------------------------------
+// §4 FinalPackageWorkOrder & target options
+// -------------------------------------------------------------
+export type TargetOption =
+  | "JOURNAL_INITIAL_SUBMISSION"
+  | "NSTC_GENERAL_APPLICATION"
+  | "MOE_TPR_APPLICATION"
+  | "LOCAL_PREFLIGHT";
+
+export type FinalPackageWorkOrder = {
+  workOrderId: string;
+  projectId: string;
+  documentId: string;
+  documentPurpose: string;
+  route: SubmissionRoute;
+  target: TargetOption;
+  targetJournalOrProgram: string;
+  targetYearOrCall: string;
+  institution: string;
+  submissionDestination: string;
+  allowedScopeRefs: string[];
+  outputFormats: string[];
+  audience: string[];
+  excludedAssets: string[];
+  wordCountScope: string;
+  templateVersionRef: string;
+  externalProcessingAuthorized: boolean;
+  budget: number;
+  retryLimit: number;
+  approvalPolicyRef: string;
+  status: "DRAFT" | "BUILDING" | "CANDIDATE_BUILT" | "QA_ISSUES" | "QA_PASSED" | "FROZEN_FOR_APPROVAL" | "APPROVAL_PENDING" | "READY_FOR_RELEASE" | "LOCKED_READY";
+};
+
+// -------------------------------------------------------------
+// §5 Official Rule Resolver (7 verification statuses)
+// -------------------------------------------------------------
+export type RuleVerificationStatus =
+  | "VERIFIED_APPLICABLE"
+  | "PREVIOUS_YEAR_REFERENCE"
+  | "PENDING_OFFICIAL_ANNOUNCEMENT"
+  | "SOURCE_UNAVAILABLE"
+  | "CONFLICTING"
+  | "UNVERIFIED"
+  | "SUPERSEDED";
+
+export type RequirementOrigin = "OFFICIAL_REQUIREMENT" | "INTERNAL_POLICY" | "AUTHOR_PREFERENCE" | "AI_SUGGESTION";
+
+export type RequirementStatus =
+  | "MET"
+  | "PARTIAL"
+  | "MISSING"
+  | "NOT_APPLICABLE_WITH_REASON"
+  | "UNKNOWN"
+  | "UNVERIFIED"
+  | "CONFLICTING"
+  | "FAILED"
+  | "STALE"
+  | "AWAITING_THIRD_PARTY";
+
+// -------------------------------------------------------------
+// §8 SubmissionFieldMap
+// -------------------------------------------------------------
+export type SubmissionFieldMap = {
+  mapId: string;
+  target: TargetOption;
+  fields: Array<{
+    fieldRef: string;
+    label: string;
+    officialSourceRef: string;
+    fieldType: string;
+    lengthLimit: number;
+    countingConvention: string;
+    valueSourceRef: string;
+    requiresHumanDeclaration: boolean;
+    preparationState: "NOT_READY" | "PREPARED" | "READY";
+    outputLocation: string;
+  }>;
+};
+
+// -------------------------------------------------------------
+// §13 / §28 Visibility & bundle split
+// -------------------------------------------------------------
+export type AudienceVisibility =
+  | "REVIEWER_VISIBLE"
+  | "EDITOR_ONLY"
+  | "INSTITUTION_ONLY"
+  | "AUTHORITY_SUBMISSION"
+  | "INTERNAL_AUDIT"
+  | "PUBLICATION_CANDIDATE";
+
+export type BundleKind = "EXTERNAL_SUBMISSION_BUNDLE" | "INTERNAL_COMPLIANCE_EVIDENCE_PACKAGE";
+
+export type BundleFile = {
+  fileId: string;
+  logicalRole: string;
+  recipientAudience: AudienceVisibility;
+  sourceEditionRef: string;
+  sourceHash: string;
+  exportHash: string;
+  filename: string;
+  mime: string;
+  byteLength: number;
+  pageCountOrWordCount: string;
+  renderer: string;
+  anonymizationApplied: boolean;
+  permissionRef: string;
+  privacyStatus: string;
+  required: boolean;
+  ruleRefs: string[];
+  qualityState: "CANDIDATE" | "QA_PASSED" | "FROZEN" | "LOCKED";
+  downloadAccess: string;
+  reviewerVisibility: AudienceVisibility;
+};
+
+export type BundleManifest = {
+  manifestId: string;
+  bundleKind: BundleKind;
+  files: BundleFile[];
+  requiredFileReconciliationPassed: boolean;
+  createdAt: string;
+};
+
+// -------------------------------------------------------------
+// §29 Package state machine
+// -------------------------------------------------------------
+export type PackageState =
+  | "DRAFT"
+  | "BUILDING"
+  | "CANDIDATE_BUILT"
+  | "QA_ISSUES"
+  | "QA_PASSED"
+  | "FROZEN_FOR_APPROVAL"
+  | "APPROVAL_PENDING"
+  | "READY_FOR_RELEASE"
+  | "LOCKED_READY"
+  | "PARTIAL_PREFLIGHT"
+  | "BLOCKED"
+  | "STALE"
+  | "SUPERSEDED"
+  | "WITHDRAWN_FROM_RELEASE";
+
+// -------------------------------------------------------------
+// §30 ready_for_action (three-route precise)
+// -------------------------------------------------------------
+export type ReadyForAction =
+  | "READY_FOR_AUTHOR_SUBMISSION"
+  | "READY_FOR_INSTITUTIONAL_REVIEW"
+  | "READY_FOR_INSTITUTIONAL_SUBMISSION"
+  | "PREFLIGHT_ONLY"
+  | "DRAFT_PACKAGE_WITH_GAPS";
+
+// -------------------------------------------------------------
 // §1-3 Submission purpose & three-route profiles
 // -------------------------------------------------------------
 export type SubmissionRoute = "JOURNAL_SCI_SSCI" | "NSTC_GENERAL" | "MOE_TPR";
@@ -137,10 +288,22 @@ export type FinalSubmissionPackageSnapshot = {
   decision: PackageReadiness;
   decisionRationale: string;
   submissionExecutionAuthorized: false; // always false this round
+  submissionStatus: "NOT_SUBMITTED_BY_THIS_STAGE";
 
   route: SubmissionRoute;
   profile: RouteProfile;
   ruleSnapshots: OfficialRuleSnapshot[];
+
+  // Full-spec §29 state machine & §30 ready_for_action
+  packageState: PackageState;
+  readyForAction: ReadyForAction;
+
+  // §4 work order / §8 field map / §13 visibility / §28 bundles
+  workOrder: FinalPackageWorkOrder;
+  fieldMap: SubmissionFieldMap;
+  visibilityManifest: Array<{ fileId: string; audience: AudienceVisibility }>;
+  externalBundle: BundleManifest;
+  internalEvidencePackage: BundleManifest;
 
   documents: PackageDocument[];
   approvalSubjectManifest: ApprovalSubjectManifest;
@@ -186,25 +349,27 @@ export type Stage19ReceiverState = {
 };
 
 // -------------------------------------------------------------
-// §8 Error codes
+// §8 Error codes (18 per full spec §32)
 // -------------------------------------------------------------
 export const FINAL_SUBMISSION_ERROR_CODES = [
   "HANDOFF_SCHEMA_UNSUPPORTED",
+  "SOURCE_SCOPE_NOT_ALLOWED",
   "SOURCE_HASH_MISMATCH",
-  "COMPLIANCE_SCOPE_NOT_AUTHORIZED",
   "SOURCE_STALE",
   "RULE_SOURCE_UNAVAILABLE",
-  "ROUTE_PROFILE_NOT_FOUND",
-  "RENDERER_UNAVAILABLE",
-  "DOCUMENT_HASH_MISMATCH",
-  "APPROVAL_NOT_VERIFIED",
-  "APPROVAL_SCOPE_MISMATCH",
-  "FREEZE_NOT_CONFIRMED",
-  "PACKAGE_LOCKED",
-  "PACKAGE_NOT_LOCKED",
-  "ANONYMIZATION_QA_FAILED",
-  "SENSITIVE_CONTENT_DETECTED",
-  "EXPORT_FORMAT_UNSUPPORTED",
+  "RULE_CONFLICT",
+  "TARGET_DEADLINE_EXPIRED",
+  "REQUIRED_EVIDENCE_MISSING",
+  "MEANING_CHANGED",
+  "AUTHOR_CONFIRMATION_MISSING",
+  "APPROVAL_DIGEST_STALE",
+  "RIGHTS_BLOCKED",
+  "ANONYMIZATION_FAILED",
+  "REQUIRED_RENDERER_UNSUPPORTED",
+  "FILE_MANIFEST_MISMATCH",
+  "PACKAGE_VERSION_CONFLICT",
+  "EXTERNAL_PROCESSING_BLOCKED",
+  "BUDGET_LIMIT_REACHED",
   "HANDOFF_SAVE_FAILED",
 ] as const;
 
