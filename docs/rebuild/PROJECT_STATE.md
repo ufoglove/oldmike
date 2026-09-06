@@ -242,3 +242,11 @@
 - **實機驗證**：`/login` 200、root 307→login、`/api/health` 200。
 - **容器內確認新代碼在位**：`ResearchWorkflowLightPanel`（流程燈號面板）、「研究流程與完成燈號」文案、`JOURNAL_SCI_SSCI`（三目標新 enum）、「教育部教學實踐研究計畫」（MOE_TPR UI 文案）、`research-workflow-registry` 全數 FOUND。
 - **部署前驗證**：140/140 契約測試 PASS、tsc 0、git 工作樹乾淨。
+
+## V3-U03-R2 選題實驗室發想區整合優化（2026-09-06 02:08 UTC，commit `a8a1d33` + 部署 `6a9ccb00`）
+- **使用者指正**：選題實驗室「沒有方向？點一下試試靈感」靜態 chips 與一鍵靈感功能重疊多餘。
+- **修正（規格 A6/§14）**：
+  * 移除 `QUICK_IDEAS` 12 條寫死示範方向＋chips 牆（靜態字串不結合 Profile/文獻 API/三大目標，屬重複發想介面）。
+  * 改為單一輕量導引列：「💡 尚未有具體方向？前往『老麥・一鍵靈感泉源』依三大目標生成 →」（`onNavigateToInspiration`）。
+  * 雙向流轉串接：選題實驗室 → 一鍵靈感；一鍵靈感單題送入 → 預填 `researchDirection` 回選題實驗室；多選比較 → 取首題方向帶回。
+- **實機驗證**：新導引列 FOUND、舊 chips 已消失、`onSendToTopicLab` 接點在位；login 200、health 200、deployment RUNNING。
