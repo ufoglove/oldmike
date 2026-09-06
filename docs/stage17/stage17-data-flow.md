@@ -1,38 +1,31 @@
-# V3-U17-FULL 第十七階段「翻譯、學術潤稿、術語一致性與語言品質」交付說明
+# V3-U17-FULL 第十七階段「翻譯、學術潤稿、術語一致性與語言品質」交付說明（完整規格版 R2）
 
-**規格基準**：`docs/stage17/spec-v3-4.0.md`（依使用者 Telegram 訊息內文收錄，九節）
+**規格基準**：`docs/stage17/spec-v3-4.0.md`（682 行完整版，SHA-256 `77025dc7efbcf60433e92f9fc787cb524be923a44daf5792d573d105a466d4c8`）
 **接收**：第十六階段 `ScientificReviewSnapshot`（上游 Gate：`SCIENTIFIC_REVISION_READY_FOR_LANGUAGE`；`USE_BLOCKED`／`SOURCE_STALE` 阻擋語言處理）
 **交付**：`LanguageQualitySnapshot` → 第十八階段「目標期刊／計畫最終合規、送件文件與成果包」（`final-compliance`）
 
-## 新增檔案與能力
-| 檔案 | 內容 |
+## 完整規格補強（R2，相較 R1 摘要版）
+| 規格節 | 實作 |
 |---|---|
-| `lib/language-quality-v3-contract.ts` | LanguageWorkOrder、LanguageTask、LanguageSegment（UTF-8 bytes）、FidelityCheckKind（15 種，超越 token 數量）、FidelityIssue、TermBinding、ProviderCapability、LanguageQualitySnapshot、Stage18ReceiverState、17 個錯誤碼 |
-| `lib/language-quality-v3-service.ts` | 承接 U16（零重複輸入）、scope 檢查（partial 不自動升整稿）、UTF-8 分段、**保真檢查**（數值/方向/分母/時點/否定/因果強度/確認探索/群組互換）、術語檢查、Provider capability manifest、QA 聚合、快照與 U18 receiver 建構 |
-| API `language-quality-v3/*` | initialize／segments／check／adopt／complete／export／receiver（7 路由，ACL＋body/DB 讀取＋scope 強制＋FATAL 阻擋採用） |
-| `scripts/verify-stage17-full-60-items.ts` | 60 項驗收（**60/60 PASS＋4 NOT_RUN**） |
-| `scripts/verify-stage17-stage18-consumer-contract.ts` | U18 consumer contract（**45/45 PASS**） |
+| §9 SemanticUnit | 6 種 ProtectionKind（HARD_LITERAL／REFERENCE_BOUND／SEMANTIC_BOUND／AUTHOR_STYLE_LOCK／NO_EXTERNAL／NO_DERIVATIVE）；subject/outcome/group/timepoint/negation/certainty/causal ceiling/qualifiers |
+| §10 ProtectedSpanManifest + Token Codec | opaque nonce 包覆受保護 span、schema allowlist、source/target occurrences；opaque token ≠ 匿名化（外傳另需授權） |
+| §6 Provider verification tiering | DOCUMENTED／ACCOUNT_ENABLED／CONNECTION_TESTED／CONTRACT_TESTED／LIVE_VERIFIED；6 provider 快照；DeepL Write 與 Translate 分開 |
+| §7 DeepL 核對 | Translate v2（context/glossary）、Write correct/rephrase 同語言、API Pro 條件、10 KiB body 限制以 UTF-8 bytes 計量 |
+| §16 EditIntensity | CONSERVATIVE／BALANCED／SUBSTANTIVE_LANGUAGE_EDIT，依章節風險（Methods/Results 預設 Conservative） |
+| §23 BudgetPlanner | estimated/reserved/reported/reconciled、PROVIDER_OUTCOME_UNKNOWN（timeout 可能已計費）、rate snapshot |
+| §30 language release state | DRAFT…USE_BLOCKED；PARTIAL_LANGUAGE_RELEASE 不自動升 full；formalComplianceAllowed + complianceAllowedScopeRefs |
+| §31 18 個錯誤碼 | HANDOFF_SCHEMA_UNSUPPORTED…HANDOFF_SAVE_FAILED 收錄於契約 |
 
-## 保真檢查重點（§5，超越 token 數量）
-- 數值/方向變化（-913.1→+913.1）→ **FATAL**
-- 分母 N 變化（N=6→N=60）→ **FATAL**
-- 未顯著改顯著 → **FATAL**（NEGATION_CHANGED）
-- may→proved 因果強化 → **FATAL**（CAUSAL_STRENGTH_CHANGED）
-- 兩組數值互換（介入/對照 swap）→ **FATAL**（GROUP_SWAPPED）
-- 時點遺失（T0/T1）→ 標記（TIMEPOINT_CHANGED）
-- 探索性分類遺失 → 標記（CONFIRMATORY_OR_EXPLORATORY_CHANGED）
-
-## Provider 誠實標示（§4）
-- DeepL Translate／DeepL Write：**NOT_CONFIGURED**（無 Live key 如實標示，不假裝接通；Translate 與 Write 分開）
-- 老麥語義模型：**MOCK**（本輪確定性規則）
-- LanguageTool：**NOT_CONFIGURED**（自架；公共免費端點不作自動批次後備）
-- Google／Azure fallback：**UNSUPPORTED**（未授權不啟用）
-- API key 只在 server（`DEEPL_API_KEY`／`LT_BASE_URL` 環境變數）
+## 驗收證據（實際執行）
+- `scripts/verify-stage17-full-60-items.ts`：**66 PASS**（60 原始 + 6 新增完整規格情境：tiering、Write 分離、budget、protected span codec、NO_DERIVATIVE、opaque token），4 NOT_RUN 誠實列明（Live DeepL、Live LanguageTool、DOCX/PDF/LaTeX round-trip、UI 整合）。
+- `scripts/verify-stage17-stage18-consumer-contract.ts`：**72/72 PASS**（含 SemanticUnit、ProtectedSpan/codec、BudgetPlanner、tiering、release state）。
+- `npx tsc --noEmit`：0 errors；回歸：U16（60/60）、U15（60/60）、U14（60/60）、U13（48/48）。
 
 ## 誠實標記
-- 語言版就緒≠正式送件、全作者同意或期刊接受。
-- fixture 通過不代表真實稿件已翻譯；未經科學審查輸入維持 LANGUAGE_ONLY／IMPORTED_UNVERIFIED。
-- 未部署 Zeabur、未跑正式 DB migration；DOCX/PDF/LaTeX/Live Fields 匯出 UNSUPPORTED。
+- DeepL Translate/Write、LanguageTool 無 Live key 如實標 NOT_CONFIGURED（不假裝接通）；老麥語義模型 CONTRACT_TESTED（本地確定性規則）。
+- opaque token 不是匿名化保證；外傳需另通過資料用途與保密檢查。
+- 語言版就緒 ≠ 正式送件、全作者同意或期刊接受；fixture ≠ 真實稿件已翻譯。
+- 未部署 Zeabur、未跑正式 DB migration；靜態 References 不冒充 Zotero Word 動態欄位。
 
 ## 回滾
-全部為新增檔（`language-quality-v3/*`、`lib/language-quality-v3-*`、`scripts/verify-stage17*`、`docs/stage17/`）；未修改既有 `academic-language`／`deepl-client`／`languagetool-client` 模組、未改既有資料表。回滾＝移除新檔即可。
+全部為新增檔（`language-quality-v3/*`、`lib/language-quality-v3-*`、`scripts/verify-stage17*`、`docs/stage17/`）；未修改既有 `academic-language`／`deepl-client`／`languagetool-client`、未改既有資料表。回滾＝移除新檔即可。

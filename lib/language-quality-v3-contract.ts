@@ -20,6 +20,106 @@ import { type ScientificReviewSnapshot } from "./scientific-review-v3-contract.t
 export const LANGUAGE_QUALITY_CONTRACT_VERSION = "language-quality/1.0.0" as const;
 
 // -------------------------------------------------------------
+// §9 SemanticUnit & §10 ProtectedSpan (full-spec additions)
+// -------------------------------------------------------------
+export type ProtectionKind =
+  | "HARD_LITERAL" // identifiers, numbers, formulas
+  | "REFERENCE_BOUND" // citation & Fact nodes
+  | "SEMANTIC_BOUND" // negation, scope, inference
+  | "AUTHOR_STYLE_LOCK" // author-preserved expression
+  | "NO_EXTERNAL"
+  | "NO_DERIVATIVE";
+
+export type SemanticUnit = {
+  unitId: string;
+  sourceSentenceRef: string;
+  subject: string;
+  relationship: string;
+  outcome: string;
+  conditionOrGroup: string;
+  timepoint: string;
+  populationOrScope: string;
+  quantifier: string;
+  negation: string;
+  certainty: string;
+  causalCeiling: string;
+  methodOrResultRefs: string[];
+  requiredQualifiers: string[];
+  protection: ProtectionKind;
+  isLocked: boolean;
+};
+
+export type ProtectedSpan = {
+  nodeId: string;
+  type: "RESULT_FACT" | "CITATION" | "QUOTE" | "FORMULA" | "TABLE_REF" | "FIGURE_REF";
+  sourceRef: string;
+  sourceVersion: string;
+  payloadHash: string;
+  claimRef?: string;
+  localeRenderer: string;
+  movableBoundary: boolean;
+  sourceOccurrences: string[];
+  targetOccurrences: string[];
+  protection: ProtectionKind;
+};
+
+export type ProtectedSpanManifest = {
+  manifestRef: string;
+  spans: ProtectedSpan[];
+  noncePrefix: string;
+  schemaAllowlist: string[];
+};
+
+// -------------------------------------------------------------
+// §6 Provider capability tiering (DOCUMENTED → LIVE_VERIFIED)
+// -------------------------------------------------------------
+export type ProviderVerificationTier =
+  | "DOCUMENTED"
+  | "ACCOUNT_ENABLED"
+  | "CONNECTION_TESTED"
+  | "CONTRACT_TESTED"
+  | "LIVE_VERIFIED";
+
+export type ProviderCapabilitySnapshot = {
+  providerId: "DEEPL_TRANSLATE" | "DEEPL_WRITE" | "OLD_MIKE_SEMANTIC" | "LANGUAGETOOL" | "GOOGLE_FALLBACK" | "AZURE_FALLBACK";
+  operation: "translate_text" | "correct_text" | "rephrase_text" | "grammar_check" | "semantic_check";
+  accountScope: string;
+  requestSchemaRef: string;
+  endpointApiVersion: string;
+  lastTestedAt?: string;
+  supportedLocales: string[];
+  featureConstraints: string[];
+  bodyLimitBytes: number;
+  region: string;
+  costModel: string;
+  dataPolicyRef: string;
+  verificationTier: ProviderVerificationTier;
+  status: "LIVE" | "MOCK" | "BLOCKED" | "NOT_CONFIGURED" | "UNSUPPORTED";
+};
+
+// -------------------------------------------------------------
+// §23 BudgetPlanner
+// -------------------------------------------------------------
+export type BudgetPlanner = {
+  plannerId: string;
+  providerId: string;
+  estimated: number;
+  reserved: number;
+  reported: number;
+  reconciled: number;
+  unit: "CHARACTER" | "TOKEN" | "DOCUMENT" | "UNKNOWN";
+  currency: string;
+  rateSnapshotRef: string;
+  providerOutcomeUnknown: boolean; // timeout may have been billed
+  notes: string[];
+};
+
+// -------------------------------------------------------------
+// §16 Edit intensity
+// -------------------------------------------------------------
+export type EditIntensity = "CONSERVATIVE" | "BALANCED" | "SUBSTANTIVE_LANGUAGE_EDIT";
+
+// -------------------------------------------------------------
 // §1-2 Language Work Order & scope
 // -------------------------------------------------------------
 export type LanguageTask =
@@ -120,12 +220,27 @@ export type LanguageQualitySnapshot = {
   decision: "LANGUAGE_READY" | "REVISION_REQUIRED" | "BLOCKED";
   decisionRationale: string;
 
+  // §30 language release state
+  languageReleaseState:
+    | "DRAFT"
+    | "PROCESSING"
+    | "AWAITING_SOURCE"
+    | "QA_ISSUES"
+    | "AWAITING_ADOPTION"
+    | "PARTIAL_LANGUAGE_RELEASE"
+    | "LANGUAGE_APPROVED_FOR_COMPLIANCE"
+    | "SOURCE_STALE"
+    | "USE_BLOCKED";
+  formalComplianceAllowed: boolean;
+  complianceAllowedScopeRefs: string[];
+
   scope: {
     workingTitleZh: string;
     workingTitleEn: string;
     sourceLanguage: string;
     targetLanguage: string;
     task: LanguageTask;
+    editIntensity: EditIntensity;
     fullManuscriptLanguageAllowed: boolean;
     languageAllowedScopeRefs: string[];
     totalSegments: number;
@@ -146,6 +261,10 @@ export type LanguageQualitySnapshot = {
   termBindingRefs: string[];
   meaningConstraintRefs: string[];
   providerCapabilityRefs: string[];
+  providerCapabilitySnapshots: ProviderCapabilitySnapshot[];
+  budgetPlannerRefs: string[];
+  semanticUnitRefs: string[];
+  protectedSpanManifestRef: string;
   alignmentRef: string;
   languageRevisionRef: string;
   qaReportRef: string;
@@ -169,6 +288,9 @@ export type Stage18ReceiverState = {
   sourceSchemaVersion: string;
   primaryGoal: PrimaryGoalId;
   decision: string;
+  languageReleaseState: string;
+  formalComplianceAllowed: boolean;
+  complianceAllowedScopeRefs: string[];
   languageScopeRefs: string[];
   totalSegments: number;
   translatedSegments: number;
@@ -193,27 +315,27 @@ export type LanguageSegment = {
 };
 
 // -------------------------------------------------------------
-// §9 Error codes
+// §9 Error codes (18 per full spec §31)
 // -------------------------------------------------------------
 export const LANGUAGE_QUALITY_ERROR_CODES = [
   "HANDOFF_SCHEMA_UNSUPPORTED",
-  "UPSTREAM_REFERENCE_MISSING",
   "SOURCE_HASH_MISMATCH",
   "LANGUAGE_SCOPE_NOT_AUTHORIZED",
-  "FULL_MANUSCRIPT_LANGUAGE_NOT_ALLOWED",
-  "PROJECT_ACCESS_DENIED",
   "SOURCE_STALE",
-  "LOCKED_CONTENT",
-  "REVISION_CONFLICT",
-  "UNKNOWN_FACT_OR_CITATION",
-  "READ_ONLY_RESULT_FACT",
-  "QUOTE_USE_NOT_AUTHORIZED",
-  "PROVIDER_NOT_CONFIGURED",
-  "PROVIDER_BLOCKED",
+  "LOCALE_OR_SCRIPT_UNSUPPORTED",
+  "PROVIDER_FEATURE_UNSUPPORTED",
+  "EXTERNAL_PROCESSING_BLOCKED",
+  "REQUEST_TOO_LARGE",
+  "PROVIDER_OUTCOME_UNKNOWN",
   "BUDGET_LIMIT_REACHED",
+  "PROTECTED_REFERENCE_MISMATCH",
+  "SEMANTIC_DRIFT_REVIEW_REQUIRED",
+  "REVISION_CONFLICT",
+  "LOCKED_CONTENT",
+  "READ_ONLY_RESULT_FACT",
+  "LANGUAGE_RELEASE_BLOCKED",
   "EXPORT_FORMAT_UNSUPPORTED",
   "HANDOFF_SAVE_FAILED",
-  "FIDELITY_FATAL_ISSUE",
 ] as const;
 
 export type LanguageQualityErrorCode = (typeof LANGUAGE_QUALITY_ERROR_CODES)[number];

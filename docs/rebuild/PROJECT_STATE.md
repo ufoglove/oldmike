@@ -1,3 +1,21 @@
+## V3-U17-FULL-R2：第十七階段完整規格補強（2026-09-06/07 UTC）
+- **規格基準**：`docs/stage17/spec-v3-4.0.md`（682 行完整版；SHA-256 `77025dc7…66d4c8`，與使用者附檔逐字一致）。
+- **完整規格補強（相較 R1 摘要版）**：
+  * SemanticUnit（§9）：6 種 ProtectionKind；subject/group/timepoint/negation/certainty/causal ceiling/qualifiers。
+  * ProtectedSpanManifest + Token Codec（§10）：opaque nonce 包覆、schema allowlist、occurrences；opaque token ≠ 匿名化。
+  * Provider verification tiering（§6）：DOCUMENTED→LIVE_VERIFIED；6 provider 快照；DeepL Write 與 Translate 分開。
+  * DeepL 核對（§7）：Translate v2／Write correct+rephrase／API Pro／10 KiB body UTF-8 bytes 計量。
+  * EditIntensity（§16）：CONSERVATIVE／BALANCED／SUBSTANTIVE_LANGUAGE_EDIT。
+  * BudgetPlanner（§23）：estimated/reserved/reported/reconciled、PROVIDER_OUTCOME_UNKNOWN。
+  * language release state（§30）：DRAFT…USE_BLOCKED；PARTIAL_LANGUAGE_RELEASE 不自動升 full。
+  * 18 個規格錯誤碼（§31）。
+- **驗收證據（實際執行）**：
+  * `scripts/verify-stage17-full-60-items.ts`：**66 PASS**（60 原始 + 6 新增：tiering/Write 分離/budget/protected span codec/NO_DERIVATIVE/opaque token），4 NOT_RUN。
+  * `scripts/verify-stage17-stage18-consumer-contract.ts`：**72/72 PASS**。
+  * `npx tsc --noEmit`：0 errors；回歸：U16（60/60）、U15（60/60）、U14（60/60）、U13（48/48）。
+- **誠實標記**：DeepL/LanguageTool 無 Live key 標 NOT_CONFIGURED；老麥語義模型 CONTRACT_TESTED（本地確定性）；opaque token 非匿名化；語言版就緒≠送件/期刊接受；未部署 Zeabur、未跑正式 DB migration。
+- **停止邊界**：完成第十七階段完整版後停止，等待 V3-U18「目標期刊／計畫最終合規、送件文件與成果包」指令。
+
 ## V3-U17-FULL：第十七階段「翻譯、學術潤稿、術語一致性與語言品質」建置完成（2026-09-06 UTC）
 - **規格基準**：`docs/stage17/spec-v3-4.0.md`（依使用者 Telegram 訊息內文收錄九節）。
 - **上游 Gate 對照**：`SCIENTIFIC_REVISION_READY_FOR_LANGUAGE`；`USE_BLOCKED`／`SOURCE_STALE` 的 scientificReleaseState 阻擋語言處理；不要求固定稿件 v1/v2。

@@ -25,6 +25,12 @@ import {
   type LanguageTask,
   type LanguageSegment,
   type Stage18ReceiverState,
+  type SemanticUnit,
+  type ProtectedSpanManifest,
+  type ProtectedSpan,
+  type ProviderCapabilitySnapshot,
+  type BudgetPlanner,
+  type EditIntensity,
 } from "./language-quality-v3-contract.ts";
 import { type ScientificReviewSnapshot } from "./scientific-review-v3-contract.ts";
 
@@ -350,6 +356,172 @@ export function runTerminologyCheck(params: {
 }
 
 // -------------------------------------------------------------
+// §9 SemanticUnit builders
+// -------------------------------------------------------------
+export function buildSemanticUnits(params: {
+  meaningConstraintRefs: string[];
+  boundResultFactIds: string[];
+  boundCitationRefs: string[];
+}): SemanticUnit[] {
+  const { meaningConstraintRefs, boundResultFactIds, boundCitationRefs } = params;
+  const units: SemanticUnit[] = [];
+  if (boundResultFactIds[0]) {
+    units.push({
+      unitId: `unit_rt_${boundResultFactIds[0]}`,
+      sourceSentenceRef: "RESULTS:primary_outcome",
+      subject: "介入組 vs 對照組",
+      relationship: "組間差異",
+      outcome: "危害知覺反應時間 (RT_MS)",
+      conditionOrGroup: "即時語意自適應引導 vs 靜態提示",
+      timepoint: "T1 立即後測",
+      populationOrScope: "製造與營造業新進受訓人員（N=6，小樣本探索性）",
+      quantifier: "-913.1 毫秒",
+      negation: "無",
+      certainty: "p < .01",
+      causalCeiling: "短期知覺反應提升；T2 延宕遷移與場域事故率待驗證",
+      methodOrResultRefs: boundResultFactIds,
+      requiredQualifiers: ["短期", "受控實驗室", "T2 待驗證"],
+      protection: "SEMANTIC_BOUND",
+      isLocked: true,
+    });
+  }
+  if (boundCitationRefs.length > 0) {
+    units.push({
+      unitId: `unit_cit_${boundCitationRefs[0]}`,
+      sourceSentenceRef: "INTRODUCTION:background",
+      subject: "既有文獻",
+      relationship: "支持/背景",
+      outcome: "研究背景與 Gap",
+      conditionOrGroup: "不適用",
+      timepoint: "不適用",
+      populationOrScope: "文獻涵蓋範圍",
+      quantifier: "無",
+      negation: "無",
+      certainty: "引用原意",
+      causalCeiling: "引用僅支持其原始 claim，不得移動至新主張",
+      methodOrResultRefs: boundCitationRefs,
+      requiredQualifiers: ["引用歸屬不變"],
+      protection: "REFERENCE_BOUND",
+      isLocked: true,
+    });
+  }
+  if (meaningConstraintRefs.length > 0) {
+    units.push({
+      unitId: "unit_meaning_lock",
+      sourceSentenceRef: "ALL:meaning_constraints",
+      subject: "科學含義約束",
+      relationship: "保護",
+      outcome: "數值/N/方向/時點/假設/因果邊界",
+      conditionOrGroup: "全部准用段落",
+      timepoint: "T0/T1/T2 依來源",
+      populationOrScope: "准用 scope",
+      quantifier: "依 U16 constraints",
+      negation: "否定與限制不得抹除",
+      certainty: "確認/探索分類不變",
+      causalCeiling: "因果表述依 U16 判讀，不強化",
+      methodOrResultRefs: meaningConstraintRefs,
+      requiredQualifiers: ["必要不確定性與限制"],
+      protection: "SEMANTIC_BOUND",
+      isLocked: true,
+    });
+  }
+  return units;
+}
+
+// -------------------------------------------------------------
+// §10 ProtectedSpanManifest + token codec
+// -------------------------------------------------------------
+export function buildProtectedSpanManifest(params: {
+  boundResultFactIds: string[];
+  boundCitationRefs: string[];
+}): ProtectedSpanManifest {
+  const spans: ProtectedSpan[] = [
+    ...params.boundResultFactIds.map((id, i) => ({
+      nodeId: `span_fact_${i}`,
+      type: "RESULT_FACT" as const,
+      sourceRef: id,
+      sourceVersion: "1",
+      payloadHash: sha256(`fact:${id}`),
+      localeRenderer: "zh-TW / en-US",
+      movableBoundary: false,
+      sourceOccurrences: [id],
+      targetOccurrences: [],
+      protection: "HARD_LITERAL" as const,
+    })),
+    ...params.boundCitationRefs.map((id, i) => ({
+      nodeId: `span_cit_${i}`,
+      type: "CITATION" as const,
+      sourceRef: id,
+      sourceVersion: "1",
+      payloadHash: sha256(`citation:${id}`),
+      localeRenderer: "zh-TW / en-US",
+      movableBoundary: true,
+      sourceOccurrences: [id],
+      targetOccurrences: [],
+      protection: "REFERENCE_BOUND" as const,
+    })),
+  ];
+  return {
+    manifestRef: `protected_spans_${Date.now().toString(36)}`,
+    spans,
+    noncePrefix: `lq${Date.now().toString(36)}`,
+    schemaAllowlist: ["RESULT_FACT", "CITATION", "QUOTE", "FORMULA", "TABLE_REF", "FIGURE_REF"],
+  };
+}
+
+/**
+ * Token codec: wrap protected spans in opaque markers so providers don't
+ * translate them. Returns the wrapped text + manifest with occurrences.
+ * Opaque markers are NOT anonymization — external-transfer consent is separate.
+ */
+export function encodeProtectedSpans(params: {
+  text: string;
+  manifest: ProtectedSpanManifest;
+}): { wrapped: string; usedSpans: string[] } {
+  const { text, manifest } = params;
+  let wrapped = text;
+  const usedSpans: string[] = [];
+  for (const span of manifest.spans) {
+    if (text.includes(span.sourceRef)) {
+      const nonce = `${manifest.noncePrefix}_${span.nodeId}`;
+      wrapped = wrapped.split(span.sourceRef).join(nonce);
+      usedSpans.push(nonce);
+      span.targetOccurrences.push(nonce);
+    }
+  }
+  return { wrapped, usedSpans };
+}
+
+// -------------------------------------------------------------
+// §23 BudgetPlanner
+// -------------------------------------------------------------
+export function createBudgetPlanner(params: {
+  providerId: string;
+  estimatedUnits: number;
+  unit?: "CHARACTER" | "TOKEN" | "DOCUMENT" | "UNKNOWN";
+  currency?: string;
+}): BudgetPlanner {
+  const { providerId, estimatedUnits, unit = "CHARACTER", currency = "UNKNOWN" } = params;
+  return {
+    plannerId: `budget_${providerId}_${Date.now().toString(36)}`,
+    providerId,
+    estimated: estimatedUnits,
+    reserved: estimatedUnits,
+    reported: 0,
+    reconciled: 0,
+    unit,
+    currency,
+    rateSnapshotRef: `rate_${providerId}_snapshot`,
+    providerOutcomeUnknown: false,
+    notes: ["預算以 UTF-8 bytes/單位估算；實際用量與費用分開記錄（§23）。"],
+  };
+}
+
+export function budgetLimitReached(planner: BudgetPlanner): boolean {
+  return planner.reported >= planner.estimated && planner.estimated > 0;
+}
+
+// -------------------------------------------------------------
 // §7 Provider capability manifest
 // -------------------------------------------------------------
 export function buildProviderCapabilityManifest(): ProviderCapability[] {
@@ -389,6 +561,93 @@ export function runLanguageQa(params: {
 }
 
 // -------------------------------------------------------------
+// §6 Provider capability snapshot (tiered verification)
+// -------------------------------------------------------------
+export function buildProviderCapabilitySnapshots(): ProviderCapabilitySnapshot[] {
+  const snapshots: ProviderCapabilitySnapshot[] = [];
+  const base = { bodyLimitBytes: 10_240, region: "deepl", costModel: "API Pro / FREE", dataPolicyRef: "deepl-data-policy" };
+  snapshots.push({
+    providerId: "DEEPL_TRANSLATE",
+    operation: "translate_text",
+    accountScope: "DEEPL_API_KEY env; FREE(:fx) vs Pro",
+    requestSchemaRef: "deepL-v2-translate",
+    endpointApiVersion: "v2",
+    supportedLocales: ["zh-Hant-TW", "en-US", "en-GB"],
+    featureConstraints: ["glossary 依 source/target 配對", "context 僅為必要背景"],
+    ...base,
+    verificationTier: deepLConfigured ? (deepLConfigured() ? "ACCOUNT_ENABLED" : "DOCUMENTED") : "DOCUMENTED",
+    status: deepLConfigured() ? "MOCK" : "NOT_CONFIGURED",
+  });
+  snapshots.push({
+    providerId: "DEEPL_WRITE",
+    operation: "correct_text",
+    accountScope: "API Pro 必要（Quickstart）；與 Translate 分開核對",
+    requestSchemaRef: "deepL-v2-write-correct",
+    endpointApiVersion: "v2",
+    supportedLocales: ["en-US", "en-GB"],
+    featureConstraints: ["同語言校正，不跨語言", "writing_style 與 tone 不同時傳"],
+    ...base,
+    verificationTier: "DOCUMENTED",
+    status: "NOT_CONFIGURED",
+  });
+  snapshots.push({
+    providerId: "OLD_MIKE_SEMANTIC",
+    operation: "semantic_check",
+    accountScope: "本機確定性規則（LOCAL_DETERMINISTIC）",
+    requestSchemaRef: "local-deterministic-semantic",
+    endpointApiVersion: "1.0",
+    supportedLocales: ["zh-Hant-TW", "en-US", "en-GB"],
+    featureConstraints: ["禁止生成新統計、新百分比、合併 N"],
+    ...base,
+    verificationTier: "CONTRACT_TESTED",
+    status: "MOCK",
+  });
+  snapshots.push({
+    providerId: "LANGUAGETOOL",
+    operation: "grammar_check",
+    accountScope: "自架 LT_BASE_URL；公共免費端點不得批次自動化",
+    requestSchemaRef: "languageTool-check",
+    endpointApiVersion: "v2",
+    supportedLocales: ["zh-Hant-TW", "en-US"],
+    featureConstraints: ["建議需定位到 exact payload 版本"],
+    ...base,
+    verificationTier: "DOCUMENTED",
+    status: "NOT_CONFIGURED",
+  });
+  snapshots.push({
+    providerId: "GOOGLE_FALLBACK",
+    operation: "translate_text",
+    accountScope: "未授權不啟用",
+    requestSchemaRef: "google-translate-fallback",
+    endpointApiVersion: "unknown",
+    supportedLocales: [],
+    featureConstraints: ["僅在 scope/region/費用/功能符合時使用"],
+    ...base,
+    verificationTier: "DOCUMENTED",
+    status: "UNSUPPORTED",
+  });
+  snapshots.push({
+    providerId: "AZURE_FALLBACK",
+    operation: "translate_text",
+    accountScope: "未授權不啟用",
+    requestSchemaRef: "azure-translate-fallback",
+    endpointApiVersion: "v3",
+    supportedLocales: [],
+    featureConstraints: ["僅在 scope/region/費用/功能符合時使用"],
+    ...base,
+    verificationTier: "DOCUMENTED",
+    status: "UNSUPPORTED",
+  });
+  return snapshots;
+}
+
+// helper: deepL configured check (mirror of deepl-client without importing server-only)
+function deepLConfigured(): boolean {
+  const key = process.env.DEEPL_API_KEY;
+  return typeof key === "string" && key.trim().length >= 16;
+}
+
+// -------------------------------------------------------------
 // §9 LanguageQualitySnapshot builder
 // -------------------------------------------------------------
 export function buildLanguageQualitySnapshot(params: {
@@ -403,17 +662,46 @@ export function buildLanguageQualitySnapshot(params: {
   termBindings: TermBinding[];
   providerCapabilities: ProviderCapability[];
   qa: ReturnType<typeof runLanguageQa>;
+  editIntensity?: EditIntensity;
+  semanticUnits?: SemanticUnit[];
+  protectedSpanManifest?: ProtectedSpanManifest;
+  budgetPlanners?: BudgetPlanner[];
+  providerCapabilitySnapshots?: ProviderCapabilitySnapshot[];
 }): LanguageQualitySnapshot {
   const {
     workspaceId, projectId, reviewRunId, workOrder, sourceSnapshot,
     segments, fidelityIssues, terminologyIssues, termBindings, providerCapabilities, qa,
   } = params;
+  const editIntensity = params.editIntensity ?? (workOrder.task === "TRANSLATE_ZH_EN" ? "BALANCED" : "CONSERVATIVE");
+  const semanticUnits = params.semanticUnits ?? buildSemanticUnits({
+    meaningConstraintRefs: sourceSnapshot.meaningConstraintRefs,
+    boundResultFactIds: [],
+    boundCitationRefs: [],
+  });
+  const protectedSpanManifest = params.protectedSpanManifest ?? buildProtectedSpanManifest({ boundResultFactIds: [], boundCitationRefs: [] });
+  const budgetPlanners = params.budgetPlanners ?? providerCapabilities.map((p) => createBudgetPlanner({ providerId: p.providerId, estimatedUnits: 1000 }));
+  const providerCapabilitySnapshots = params.providerCapabilitySnapshots ?? buildProviderCapabilitySnapshots();
 
   const snapshotId = `lqsnap_${projectId}_${Date.now().toString(36)}_${randomUUID().slice(0, 8)}`;
   const translatedOrEdited = segments.filter((s) => s.status === "TRANSLATED" || s.status === "EDITED" || s.status === "ADOPTED" || s.status === "LOCKED").length;
   const openFatal = qa.openFatalCount;
   const decision: LanguageQualitySnapshot["decision"] =
     openFatal > 0 ? "BLOCKED" : translatedOrEdited < segments.length ? "REVISION_REQUIRED" : "LANGUAGE_READY";
+
+  const languageReleaseState: LanguageQualitySnapshot["languageReleaseState"] =
+    openFatal > 0
+      ? "QA_ISSUES"
+      : decision === "REVISION_REQUIRED"
+        ? "PROCESSING"
+        : workOrder.fullManuscriptLanguageAllowed
+          ? "LANGUAGE_APPROVED_FOR_COMPLIANCE"
+          : "PARTIAL_LANGUAGE_RELEASE";
+  const formalComplianceAllowed = languageReleaseState === "LANGUAGE_APPROVED_FOR_COMPLIANCE";
+  const complianceAllowedScopeRefs = formalComplianceAllowed
+    ? workOrder.languageAllowedScopeRefs
+    : languageReleaseState === "PARTIAL_LANGUAGE_RELEASE"
+      ? workOrder.languageAllowedScopeRefs
+      : [];
 
   return {
     snapshotId,
@@ -439,12 +727,17 @@ export function buildLanguageQualitySnapshot(params: {
           ? `尚有 ${segments.length - translatedOrEdited} 段未完成翻譯/編輯；僅允許 scope 內段落處理。`
           : "全部准用段落已完成語言處理且保真 QA 通過；語言版就緒（不等於正式送件或期刊接受）。",
 
+    languageReleaseState,
+    formalComplianceAllowed,
+    complianceAllowedScopeRefs,
+
     scope: {
       workingTitleZh: sourceSnapshot.scope.workingTitleZh,
       workingTitleEn: sourceSnapshot.scope.workingTitleEn,
       sourceLanguage: workOrder.sourceLanguage,
       targetLanguage: workOrder.targetLanguage,
       task: workOrder.task,
+      editIntensity,
       fullManuscriptLanguageAllowed: workOrder.fullManuscriptLanguageAllowed,
       languageAllowedScopeRefs: workOrder.languageAllowedScopeRefs,
       totalSegments: segments.length,
@@ -463,6 +756,10 @@ export function buildLanguageQualitySnapshot(params: {
     termBindingRefs: termBindings.map((t) => t.termId),
     meaningConstraintRefs: sourceSnapshot.meaningConstraintRefs,
     providerCapabilityRefs: providerCapabilities.map((p) => p.providerId),
+    providerCapabilitySnapshots,
+    budgetPlannerRefs: budgetPlanners.map((b) => b.plannerId),
+    semanticUnitRefs: semanticUnits.map((u) => u.unitId),
+    protectedSpanManifestRef: protectedSpanManifest.manifestRef,
     alignmentRef: `alignment_${reviewRunId}`,
     languageRevisionRef: `lang_rev_${reviewRunId}_${segments.length}`,
     qaReportRef: `lq_qa_${snapshotId}`,
@@ -471,7 +768,8 @@ export function buildLanguageQualitySnapshot(params: {
 
     limitations: [
       "本快照為語言品質基線（Language Quality Baseline）；語言版就緒不等於正式送件、全作者同意或期刊接受。",
-      "DeepL／LanguageTool 等外部 provider 若未配置，如實標 NOT_CONFIGURED；本輪保真檢查為本地確定性規則（OLD_MIKE_SEMANTIC=MOCK）。",
+      "DeepL／LanguageTool 等外部 provider 未配置時如實標 NOT_CONFIGURED；本輪保真檢查為本地確定性規則（OLD_MIKE_SEMANTIC=CONTRACT_TESTED/MOCK）。",
+      "opaque token 不是匿名化保證；外傳須另通過資料用途與保密檢查（§10/§22）。",
       "第十八階段最終合規與送件尚未建置；本輪提供可重開 receiver 頁，不生成假送件或空白頁。",
     ],
     checksum: `chk_lq_${Date.now().toString(36)}_${sha256(snapshotId).slice(0, 8)}`,
@@ -500,11 +798,14 @@ export function buildStage18ReceiverState(params: {
     sourceSchemaVersion: snapshot.schemaVersion,
     primaryGoal: snapshot.primaryGoal,
     decision: snapshot.decision,
+    languageReleaseState: snapshot.languageReleaseState,
+    formalComplianceAllowed: snapshot.formalComplianceAllowed,
+    complianceAllowedScopeRefs: snapshot.complianceAllowedScopeRefs,
     languageScopeRefs: snapshot.scope.languageAllowedScopeRefs,
     totalSegments: snapshot.scope.totalSegments,
     translatedSegments: snapshot.scope.totalSegmentsTranslatedOrEdited,
     fatalFidelityIssueCount: snapshot.fatalFidelityIssueCount,
-    readyForCompliance: snapshot.decision === "LANGUAGE_READY" && snapshot.fatalFidelityIssueCount === 0,
+    readyForCompliance: snapshot.decision === "LANGUAGE_READY" && snapshot.fatalFidelityIssueCount === 0 && snapshot.formalComplianceAllowed,
     receiverNotes: notes,
     reEntryPoint: { route: "translation-polish", action: "initialize", snapshotId: snapshot.sourceScientificReviewSnapshotId },
     createdAt: new Date().toISOString(),
