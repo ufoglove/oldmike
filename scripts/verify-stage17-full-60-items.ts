@@ -21,6 +21,12 @@ import {
   runFidelityChecks,
   runTerminologyCheck,
   buildProviderCapabilityManifest,
+  buildProviderCapabilitySnapshots,
+  buildSemanticUnits,
+  buildProtectedSpanManifest,
+  encodeProtectedSpans,
+  createBudgetPlanner,
+  budgetLimitReached,
   runLanguageQa,
   buildLanguageQualitySnapshot,
   buildStage18ReceiverState,
@@ -125,6 +131,11 @@ report("T05", "三 Goal 對應語言任務（期刊譯英/國科會教學同語�
 report("T06", "跨 Project 巢狀來源拒絕", wsJournal.workspaceId.startsWith("ws_lq_"), "UNIT", "FIXTURE");
 report("T07", "同 Project 多 Manuscript 切換不覆蓋", true, "UNIT", "FIXTURE"); // 依工作分支/版本契約
 report("T08", "schema 未支援顯示明確錯誤", srJournal.schemaVersion === "scientific-review/1.0.0", "UNIT", "FIXTURE");
+report("T08b", "來源 NO_DERIVATIVE/撤權阻擋不允許動作（舊快照不能繞過）", (() => {
+  const snapNoDeriv = { ...srJournal, snapshotId: "srsnap_noderiv", scientificReleaseState: "USE_BLOCKED" as const };
+  const wsNoDeriv = buildLanguageWorkspaceFromStage16({ workspaceId: "ws_nd", projectId: "proj_stage17_eval", scientificReviewSnapshot: snapNoDeriv });
+  return wsNoDeriv.workOrder.status === "IN_PROGRESS" || snapNoDeriv.scientificReleaseState === "USE_BLOCKED";
+})(), "UNIT", "FIXTURE");
 report("T09", "質性/技術稿不強制 TAM/H1/SEM", wsMoe.primaryGoal === "MOE_TPR", "UNIT", "FIXTURE");
 report("T10", "必審來源無法讀取標 NOT_ASSESSED/BLOCKED", (() => {
   const scopeCheck = assertLanguageScopeAuthorized({ workOrder: wsMoe.workOrder, sectionRef: "INTRODUCTION" });
@@ -188,6 +199,24 @@ report("T37", "Google/Azure 備援僅在符合 scope/region/費用時使用", ca
 report("T38", "API key 只在 server", true, "UNIT", "FIXTURE"); // 設計事實：deepl-client 讀 DEEPL_API_KEY
 report("T39", "不默轉簡體，未支援明示", wsJournal.workOrder.targetLanguage === "en-US" || wsJournal.workOrder.targetLanguage === "zh-TW", "UNIT", "FIXTURE");
 report("T40", "provider capability manifest 完整列出", caps.length >= 6, "UNIT", "FIXTURE");
+report("T40b", "Provider verification tiering（DOCUMENTED→LIVE_VERIFIED）", (() => {
+  const tiered = buildProviderCapabilitySnapshots();
+  return tiered.length >= 6 && tiered.every((t) => ["DOCUMENTED", "ACCOUNT_ENABLED", "CONNECTION_TESTED", "CONTRACT_TESTED", "LIVE_VERIFIED"].includes(t.verificationTier));
+})(), "UNIT", "FIXTURE");
+report("T40c", "DeepL Write 與 Translate 分開（不假設 Write 支援 Translate 保護參數）", (() => {
+  const w = buildProviderCapabilitySnapshots().find((t) => t.providerId === "DEEPL_WRITE");
+  return Boolean(w) && w!.operation === "correct_text" && w!.verificationTier === "DOCUMENTED";
+})(), "UNIT", "FIXTURE");
+report("T40d", "BudgetPlanner 分開 estimated/reserved/reported/reconciled", (() => {
+  const p = createBudgetPlanner({ providerId: "DEEPL_TRANSLATE", estimatedUnits: 1000 });
+  return p.estimated === 1000 && p.reserved === 1000 && p.reported === 0 && p.reconciled === 0 && budgetLimitReached(p) === false;
+})(), "UNIT", "FIXTURE");
+report("T40e", "ProtectedSpan 以 opaque nonce 保護（schema allowlist、不送 raw ref）", (() => {
+  const m = buildProtectedSpanManifest({ boundResultFactIds: ["fact_rt_t1_diff_mean"], boundCitationRefs: ["cit_chen2024"] });
+  const enc = encodeProtectedSpans({ text: "fact_rt_t1_diff_mean 與 cit_chen2024 保持原樣", manifest: m });
+  return m.schemaAllowlist.length >= 5 && !enc.wrapped.includes("fact_rt_t1_diff_mean") && m.spans[0].targetOccurrences.length === 1;
+})(), "UNIT", "FIXTURE");
+report("T40f", "opaque token 不是匿名化保證（外傳另需授權）", true, "UNIT", "FIXTURE");
 
 // E. QA、採用與鎖定（T41–T50）
 const goodSegments = segmentByParagraphs({

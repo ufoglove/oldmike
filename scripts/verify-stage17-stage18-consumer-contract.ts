@@ -25,6 +25,12 @@ import {
   runFidelityChecks,
   runTerminologyCheck,
   buildProviderCapabilityManifest,
+  buildProviderCapabilitySnapshots,
+  buildSemanticUnits,
+  buildProtectedSpanManifest,
+  encodeProtectedSpans,
+  createBudgetPlanner,
+  budgetLimitReached,
   runLanguageQa,
   buildLanguageQualitySnapshot,
   buildStage18ReceiverState,
@@ -278,6 +284,87 @@ report("S18-R6", receiver.reEntryPoint.action === "initialize", "receiver re-ent
 
 // No fake claims
 report("S18-E1", !["SUBMITTED", "ACCEPTED", "PUBLISHED"].includes(snapshot.decision as string), "snapshot never claims submission/journal acceptance");
+
+// ---- Full-spec additions: SemanticUnit, ProtectedSpan codec, BudgetPlanner, tiering,
+// ---- edit intensity, release state, error-code set
+try {
+  const units = buildSemanticUnits({
+    meaningConstraintRefs: sourceSnapshot.meaningConstraintRefs,
+    boundResultFactIds: ["fact_rt_t1_diff_mean"],
+    boundCitationRefs: ["cit_chen2024"],
+  });
+  report("S18-SU1", units.length >= 3, "semantic units cover result/citation/meaning-lock");
+  report("S18-SU2", units.some((u) => u.protection === "REFERENCE_BOUND"), "citation unit is REFERENCE_BOUND");
+  report("S18-SU3", units.some((u) => u.protection === "SEMANTIC_BOUND"), "meaning-lock unit is SEMANTIC_BOUND");
+  report("S18-SU4", units.every((u) => u.isLocked === true), "semantic units locked (protected)");
+
+  const spanManifest = buildProtectedSpanManifest({ boundResultFactIds: ["fact_rt_t1_diff_mean"], boundCitationRefs: ["cit_chen2024"] });
+  report("S18-PS1", spanManifest.spans.length === 2, "protected span manifest covers fact + citation");
+  report("S18-PS2", spanManifest.spans[0].type === "RESULT_FACT" && spanManifest.spans[0].protection === "HARD_LITERAL", "result fact is HARD_LITERAL");
+  report("S18-PS3", spanManifest.noncePrefix.startsWith("lq"), "nonce prefix avoids collisions");
+  const encoded = encodeProtectedSpans({ text: "fact_rt_t1_diff_mean and cit_chen2024 stay literal", manifest: spanManifest });
+  report("S18-PS4", encoded.wrapped !== "fact_rt_t1_diff_mean and cit_chen2024 stay literal", "protected spans wrapped in opaque nonce tokens");
+  report("S18-PS5", !encoded.wrapped.includes("fact_rt_t1_diff_mean") && !encoded.wrapped.includes("cit_chen2024"), "source refs replaced by nonce (never sent raw to provider)");
+  report("S18-PS6", spanManifest.spans[0].targetOccurrences.length === 1, "target occurrences recorded");
+
+  const planner = createBudgetPlanner({ providerId: "DEEPL_TRANSLATE", estimatedUnits: 1000 });
+  report("S18-B1", planner.estimated === 1000 && planner.reserved === 1000, "budget planner reserves estimated units");
+  report("S18-B2", budgetLimitReached(planner) === false, "budget not reached at estimate");
+  report("S18-B3", planner.unit === "CHARACTER" && planner.currency === "UNKNOWN", "cost params honest (UNKNOWN when no rate)");
+  report("S18-B4", planner.providerOutcomeUnknown === false, "provider outcome unknown flag starts false");
+
+  const tiered = buildProviderCapabilitySnapshots();
+  report("S18-T1", tiered.length >= 6, "tiered capability snapshots for all providers");
+  report("S18-T2", tiered.every((t) => ["DOCUMENTED", "ACCOUNT_ENABLED", "CONNECTION_TESTED", "CONTRACT_TESTED", "LIVE_VERIFIED"].includes(t.verificationTier)), "verification tiers use spec §6 enum");
+  report("S18-T3", tiered.find((t) => t.providerId === "OLD_MIKE_SEMANTIC")?.verificationTier === "CONTRACT_TESTED", "old mike semantic = CONTRACT_TESTED (not LIVE)");
+  report("S18-T4", tiered.find((t) => t.providerId === "DEEPL_WRITE")?.operation === "correct_text", "DeepL Write is correct_text (same-language)");
+
+  // Edit intensity + release state in snapshot
+  const intSnap = buildLanguageQualitySnapshot({
+    workspaceId: ws.workspaceId,
+    projectId: ws.projectId,
+    reviewRunId: ws.reviewRunId,
+    workOrder: ws.workOrder,
+    sourceSnapshot,
+    segments: goodSegments,
+    fidelityIssues: [],
+    terminologyIssues: [],
+    termBindings,
+    providerCapabilities: caps,
+    qa: runLanguageQa({ fidelityIssues: [], terminologyIssues: [], numericTokensHeld: true, citationRefsHeld: true }),
+    editIntensity: "BALANCED",
+    semanticUnits: units,
+    protectedSpanManifest: spanManifest,
+    budgetPlanners: [planner],
+    providerCapabilitySnapshots: tiered,
+  });
+  report("S18-INT1", intSnap.scope.editIntensity === "BALANCED", "edit intensity carried into snapshot");
+  report("S18-INT2", intSnap.semanticUnitRefs.length >= 3, "semantic unit refs propagated");
+  report("S18-INT3", intSnap.protectedSpanManifestRef.startsWith("protected_spans_"), "protected span manifest ref propagated");
+  report("S18-INT4", intSnap.budgetPlannerRefs.length === 1, "budget planner refs propagated");
+  report("S18-INT5", intSnap.providerCapabilitySnapshots.length >= 6, "provider capability snapshots propagated");
+  report("S18-INT6", intSnap.languageReleaseState === "LANGUAGE_APPROVED_FOR_COMPLIANCE", "full allowed + done ⇒ approved for compliance");
+  report("S18-INT7", intSnap.formalComplianceAllowed === true, "formal compliance allowed when full release");
+  report("S18-INT8", intSnap.scope.editIntensity === "BALANCED" && !JSON.stringify(intSnap).includes("JOURNAL_ACCEPTED"), "no journal-acceptance claim in language snapshot");
+
+  // Partial release state
+  const partialInt = buildLanguageQualitySnapshot({
+    workspaceId: wsPartial.workspaceId || wsPartial.workspaceId,
+    projectId: wsPartial.projectId,
+    reviewRunId: wsPartial.reviewRunId,
+    workOrder: wsPartial.workOrder,
+    sourceSnapshot: partialSnapshot,
+    segments: goodSegments,
+    fidelityIssues: [],
+    terminologyIssues: [],
+    termBindings,
+    providerCapabilities: caps,
+    qa: runLanguageQa({ fidelityIssues: [], terminologyIssues: [], numericTokensHeld: true, citationRefsHeld: true }),
+  });
+  report("S18-INT9", partialInt.languageReleaseState === "PARTIAL_LANGUAGE_RELEASE" && partialInt.formalComplianceAllowed === false, "partial ⇒ PARTIAL_LANGUAGE_RELEASE, compliance blocked (never auto-upgrade)");
+} catch (e) {
+  report("S18-EXT", false, `full-spec extensions errored: ${e instanceof Error ? e.message : String(e)}`);
+}
 
 console.log("");
 console.log(`STAGE 18 CONSUMER CONTRACT: ${pass} PASS, ${fail} FAIL`);
