@@ -1,3 +1,21 @@
+## V3-U18-FULL-R2：第十八階段完整規格補強（2026-09-06/07 UTC）
+- **規格基準**：`docs/stage18/spec-v3-4.0.md`（641 行完整版；SHA-256 `5d608c92…aab07f5`，與使用者附檔逐字一致）。
+- **完整規格補強（相較 R1 摘要版）**：
+  * FinalPackageWorkOrder（§4）：target options（JOURNAL_INITIAL_SUBMISSION／NSTC_GENERAL_APPLICATION／MOE_TPR_APPLICATION／LOCAL_PREFLIGHT）。
+  * Official Rule Resolver（§5）：7 態（VERIFIED_APPLICABLE／PREVIOUS_YEAR_REFERENCE／PENDING_OFFICIAL_ANNOUNCEMENT／SOURCE_UNAVAILABLE／CONFLICTING／UNVERIFIED／SUPERSEDED）。
+  * SubmissionFieldMap（§8）：三路線欄位；author/PI 需 human declaration；初始 NOT_READY。
+  * Visibility（§13）：REVIEWER_VISIBLE…INTERNAL_AUDIT；Title Page 在雙匿名下 EDITOR_ONLY。
+  * Bundle 分流（§28）：EXTERNAL_SUBMISSION_BUNDLE vs INTERNAL_COMPLIANCE_EVIDENCE_PACKAGE。
+  * 狀態機（§29）：DRAFT…LOCKED_READY；PARTIAL_PREFLIGHT/BLOCKED/STALE/SUPERSEDED/WITHDRAWN_FROM_RELEASE。
+  * ready_for_action（§30）：READY_FOR_AUTHOR_SUBMISSION（期刊）／READY_FOR_INSTITUTIONAL_REVIEW（NSTC/MOE 先校內）／PREFLIGHT_ONLY。
+  * submissionStatus=NOT_SUBMITTED_BY_THIS_STAGE；19 個規格錯誤碼（§32）。
+- **驗收證據（實際執行）**：
+  * `scripts/verify-stage18-full-66-items.ts`：**79 PASS**（66 原始 + 13 R2 情境），3 NOT_RUN。
+  * `scripts/verify-stage18-stage19-consumer-contract.ts`：**70/70 PASS**。
+  * `npx tsc --noEmit`：0 errors；回歸：U17（66）、U16（60）、U15（60）、U14（60）、U13（48）。
+- **誠實標記**：submission_execution_authorized=false 恆定；READY ≠ SUBMITTED/官方核准；DOCX/PDF/LaTeX 無 renderer 標 UNSUPPORTED；ApprovalSubjectManifest 無循環 hash；未部署 Zeabur、未跑正式 DB migration；fixture ≠ 真實稿件已合規或已送件。
+- **停止邊界**：完成第十八階段完整版後停止，等待 V3-U19「正式送件、狀態追蹤與審查往返」指令。
+
 ## V3-U18-FULL：第十八階段「目標期刊／計畫最終合規、送件文件與成果包」建置完成（2026-09-06/07 UTC）
 - **規格基準**：`docs/stage18/spec-v3-4.0.md`（依使用者 Telegram 訊息內文八節收錄）。
 - **上游 Gate 對照**：`LANGUAGE_EDITION_READY_FOR_FINAL_COMPLIANCE`；`USE_BLOCKED`／`SOURCE_STALE` 的 languageReleaseState 阻擋合規；`formal_compliance_allowed=false` 僅可做預檢，不自動變完整科學核准。

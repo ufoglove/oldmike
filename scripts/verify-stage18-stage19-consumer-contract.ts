@@ -32,6 +32,10 @@ import {
   buildFinalSubmissionPackageSnapshot,
   buildStage19ReceiverState,
   rendererCapabilities,
+  buildFinalPackageWorkOrder,
+  resolveRuleVerificationStatus,
+  buildSubmissionFieldMap,
+  buildBundleManifests,
 } from "../lib/final-submission-v3-service.ts";
 import { type PackageDocument } from "../lib/final-submission-v3-contract.ts";
 import { type LanguageQualitySnapshot } from "../lib/language-quality-v3-contract.ts";
@@ -223,7 +227,7 @@ const nstcSnap = buildFinalSubmissionPackageSnapshot({
   freezeConfirmed: true,
   packageLocked: true,
 });
-report("S19-S11", nstcSnap.decision === "READY_FOR_INSTITUTIONAL_SUBMISSION", "NSTC readiness ≠ journal submission (route-specific)");
+report("S19-S11", nstcSnap.decision === "READY_FOR_INSTITUTIONAL_REVIEW" || nstcSnap.decision === "READY_FOR_INSTITUTIONAL_SUBMISSION", "NSTC readiness ≠ journal submission (route-specific)");
 report("S19-S12", !nstcSnap.documents.some((d) => d.kind === "COVER_LETTER"), "NSTC package has no journal cover letter");
 
 // ---- 8. Stage 19 receiver
@@ -237,6 +241,107 @@ report("S19-R6", receiver.reEntryPoint.route === "final-compliance", "receiver r
 
 // No fake claims
 report("S19-E1", !["SUBMITTED", "ACCEPTED", "APPROVED_BY_AGENCY"].includes(snapshot.decision as string), "snapshot never claims submission/official approval");
+
+// ---- Full-spec additions: work order, rule resolver, field map, visibility,
+// ---- bundles, package state machine, ready_for_action
+try {
+  const wo = buildFinalPackageWorkOrder({
+    projectId: "proj_stage19_consumer",
+    documentId: "doc_main",
+    documentPurpose: "JOURNAL_INITIAL_SUBMISSION",
+    route: "JOURNAL_SCI_SSCI",
+    formalComplianceAllowed: true,
+    complianceAllowedScopeRefs: lqJournal.complianceAllowedScopeRefs,
+  });
+  report("S19-W1", wo.target === "JOURNAL_INITIAL_SUBMISSION", "work order target for journal is JOURNAL_INITIAL_SUBMISSION");
+  report("S19-W2", wo.status === "BUILDING", "work order starts BUILDING when formal allowed");
+  report("S19-W3", wo.excludedAssets.some((a) => /Raw|IdentityVault|prompt/.test(a)), "work order excludes Raw/IdentityVault/prompt");
+
+  const woPartial = buildFinalPackageWorkOrder({
+    projectId: "p", documentId: "d", documentPurpose: "MOE_TPR_APPLICATION", route: "MOE_TPR", formalComplianceAllowed: false, complianceAllowedScopeRefs: ["RESULTS"],
+  });
+  report("S19-W4", woPartial.target === "MOE_TPR_APPLICATION" && woPartial.status === "DRAFT", "partial ⇒ DRAFT/PREFLIGHT (never full READY)");
+
+  const ruleV = resolveRuleVerificationStatus({ sourceUrl: "https://example.gov/rule", effectiveDate: "2026-01-01" });
+  report("S19-RV1", ruleV.status === "VERIFIED_APPLICABLE", "rule resolver marks verified source as VERIFIED_APPLICABLE");
+  const rulePrev = resolveRuleVerificationStatus({ sourceUrl: "https://example.gov/prev", previousYearOnly: true });
+  report("S19-RV2", rulePrev.status === "PREVIOUS_YEAR_REFERENCE", "previous-year template stays PREVIOUS_YEAR_REFERENCE (not verified)");
+  const ruleConflict = resolveRuleVerificationStatus({ sourceUrl: "https://example.gov/rule", conflictDetected: true });
+  report("S19-RV3", ruleConflict.status === "CONFLICTING", "conflicting rules → CONFLICTING (needs confirmation)");
+  const ruleUnavail = resolveRuleVerificationStatus({ sourceUrl: "待官方" });
+  report("S19-RV4", ruleUnavail.status === "SOURCE_UNAVAILABLE", "unavailable source → SOURCE_UNAVAILABLE (not 'not announced')");
+
+  const fm = buildSubmissionFieldMap({ target: "JOURNAL_INITIAL_SUBMISSION", route: "JOURNAL_SCI_SSCI" });
+  report("S19-FM1", fm.fields.some((f) => f.fieldRef === "authors" && f.requiresHumanDeclaration), "author field requires human declaration");
+  report("S19-FM2", fm.fields.every((f) => f.preparationState === "NOT_READY"), "field map starts NOT_READY (no fake READY)");
+  const fmNstc = buildSubmissionFieldMap({ target: "NSTC_GENERAL_APPLICATION", route: "NSTC_GENERAL" });
+  report("S19-FM3", fmNstc.fields.some((f) => f.fieldRef === "pi"), "NSTC field map has PI field (not journal template)");
+
+  const bundles = buildBundleManifests({ projectId: "p", documents: docs, anonymizationRequired: true });
+  report("S19-B1", bundles.external.bundleKind === "EXTERNAL_SUBMISSION_BUNDLE", "external bundle typed correctly");
+  report("S19-B2", bundles.internal.bundleKind === "INTERNAL_COMPLIANCE_EVIDENCE_PACKAGE", "internal evidence package typed correctly");
+  report("S19-B3", bundles.external.files.some((f) => f.recipientAudience === "REVIEWER_VISIBLE"), "external files reviewer-visible");
+  report("S19-B4", bundles.external.files.find((f) => f.logicalRole === "TITLE_PAGE")?.recipientAudience === "EDITOR_ONLY", "title page editor-only under double-blind");
+  report("S19-B5", bundles.internal.files.every((f) => f.recipientAudience === "INTERNAL_AUDIT"), "internal files internal-audit only");
+
+  // State machine + ready_for_action in snapshot
+  const fullSnap = buildFinalSubmissionPackageSnapshot({
+    workspaceId: fcJournal.workspaceId,
+    projectId: fcJournal.projectId,
+    workOrderId: fcJournal.workOrderId,
+    sourceSnapshot: lqJournal,
+    route: fcJournal.route,
+    profile: fcJournal.profile,
+    rules,
+    documents: readyDocs,
+    manifest: readyManifest,
+    approvals: [],
+    requiredApprovals: 0,
+    anonymizationQa: { passed: true, issues: [] },
+    referencesQa: { passed: true, issues: [] },
+    renderQa: { passed: true, issues: [] },
+    freezeConfirmed: true,
+    packageLocked: true,
+    workOrder: wo,
+    fieldMap: fm,
+    externalBundle: bundles.external,
+    internalEvidencePackage: bundles.internal,
+  });
+  report("S19-SM1", fullSnap.packageState === "LOCKED_READY", "package state LOCKED_READY when locked + confirmed + QA passed");
+  report("S19-SM2", fullSnap.readyForAction === "READY_FOR_AUTHOR_SUBMISSION", "journal ready_for_action = READY_FOR_AUTHOR_SUBMISSION");
+  report("S19-SM3", fullSnap.submissionStatus === "NOT_SUBMITTED_BY_THIS_STAGE", "submission_status = NOT_SUBMITTED_BY_THIS_STAGE");
+  report("S19-SM4", fullSnap.workOrder.workOrderId.startsWith("wfc_"), "work order ref propagated");
+  report("S19-SM5", fullSnap.fieldMap.mapId.startsWith("fieldmap_"), "field map ref propagated");
+  report("S19-SM6", fullSnap.visibilityManifest.length === bundles.external.files.length, "visibility manifest mirrors external bundle");
+  report("S19-SM7", fullSnap.externalBundle.manifestId.startsWith("extbundle_") && fullSnap.internalEvidencePackage.manifestId.startsWith("intbundle_"), "both bundles propagated");
+
+  // NSTC ready_for_action = institutional review first
+  const nstcFull = buildFinalSubmissionPackageSnapshot({
+    workspaceId: fcNstc.workspaceId,
+    projectId: fcNstc.projectId,
+    workOrderId: fcNstc.workOrderId,
+    sourceSnapshot: lqNstc,
+    route: fcNstc.route,
+    profile: fcNstc.profile,
+    rules: buildRuleSnapshots({ route: "NSTC_GENERAL" }),
+    documents: (nstcFrozen.ok ? nstcFrozen.documents : nstcDocs).map((d) => ({ ...d, status: "LOCKED" as const })),
+    manifest: buildApprovalSubjectManifest({ projectId: "p", documents: nstcFrozen.ok ? nstcFrozen.documents : nstcDocs, createdBy: "u" }),
+    approvals: [],
+    requiredApprovals: 0,
+    anonymizationQa: { passed: true, issues: [] },
+    referencesQa: { passed: true, issues: [] },
+    renderQa: { passed: true, issues: [] },
+    freezeConfirmed: true,
+    packageLocked: true,
+  });
+  report("S19-SM8", nstcFull.readyForAction === "READY_FOR_INSTITUTIONAL_REVIEW", "NSTC ready_for_action = READY_FOR_INSTITUTIONAL_REVIEW (institutional gate first)");
+  report("S19-SM9", nstcFull.decision === "READY_FOR_INSTITUTIONAL_REVIEW", "NSTC decision = READY_FOR_INSTITUTIONAL_REVIEW");
+
+  // 19 error codes set (spec §32)
+  report("S19-ERR1", typeof fullSnap.checksum === "string" && fullSnap.checksum.startsWith("chk_fs_"), "checksum prefix ok");
+} catch (e) {
+  report("S19-EXT", false, `full-spec extensions errored: ${e instanceof Error ? e.message : String(e)}`);
+}
 
 console.log("");
 console.log(`STAGE 19 CONSUMER CONTRACT: ${pass} PASS, ${fail} FAIL`);

@@ -29,6 +29,10 @@ import {
   buildFinalSubmissionPackageSnapshot,
   buildStage19ReceiverState,
   rendererCapabilities,
+  buildFinalPackageWorkOrder,
+  resolveRuleVerificationStatus,
+  buildSubmissionFieldMap,
+  buildBundleManifests,
 } from "../lib/final-submission-v3-service.ts";
 import { type PackageDocument, type AuthorApprovalRecord } from "../lib/final-submission-v3-contract.ts";
 import { type LanguageQualitySnapshot } from "../lib/language-quality-v3-contract.ts";
@@ -258,8 +262,8 @@ report("T49", "NSTC 就緒種類為校內審核/送件（非期刊送件）", ((
     anonymizationQa: { passed: true, issues: [] }, referencesQa: { passed: true, issues: [] }, renderQa: { passed: true, issues: [] },
     freezeConfirmed: true, packageLocked: true,
   });
-  return s.decision === "READY_FOR_INSTITUTIONAL_SUBMISSION";
-})(), "UNIT", "SYNTHETIC_PACKAGE_TEST");
+  return s.readyForAction === "READY_FOR_INSTITUTIONAL_REVIEW" && s.decision !== "READY_FOR_AUTHOR_SUBMISSION" && s.submissionStatus === "NOT_SUBMITTED_BY_THIS_STAGE";
+})(), "UNIT", "SYNTHETIC_PACKAGE_TEST", );
 report("T50", "submission_execution_authorized=false 全快照", (() => {
   const s = buildFinalSubmissionPackageSnapshot({
     workspaceId: fcJournal.workspaceId, projectId: fcJournal.projectId, workOrderId: fcJournal.workOrderId,
@@ -305,6 +309,37 @@ report("T66", "完成本階段回歸（前十七階段契約全數暢通）", Bo
 notRun("N1", "真實 DOCX/PDF/LaTeX renderer round-trip", "本輪無可靠 renderer；如實標 UNSUPPORTED，不以 Markdown 冒稱可送件。");
 notRun("N2", "目標期刊/NSTC/MOE 官方規則即時重驗", "規則來源依官方文件核對後填入；本輪保留待官方來源（如實標註）。");
 notRun("N3", "UI 深度整合（FinalComplianceCenter 表單、一鍵主按鈕）", "本輪完成契約/服務/API；UI 整合為後續輪次。");
+
+// Full-spec R2 additions (rule resolver 7-state, field map, visibility/bundles,
+// state machine, ready_for_action) — supplementary checks beyond the base 66
+{
+  const wo = buildFinalPackageWorkOrder({ projectId: "p", documentId: "d", documentPurpose: "JOURNAL_INITIAL_SUBMISSION", route: "JOURNAL_SCI_SSCI", formalComplianceAllowed: true, complianceAllowedScopeRefs: ["RESULTS"] });
+  report("R2-01", "work order journal target + BUILDING", wo.target === "JOURNAL_INITIAL_SUBMISSION" && wo.status === "BUILDING", "UNIT", "FIXTURE");
+  const woPartial = buildFinalPackageWorkOrder({ projectId: "p", documentId: "d", documentPurpose: "MOE_TPR_APPLICATION", route: "MOE_TPR", formalComplianceAllowed: false, complianceAllowedScopeRefs: ["RESULTS"] });
+  report("R2-02", "partial work order DRAFT (never auto full)", woPartial.target === "MOE_TPR_APPLICATION" && woPartial.status === "DRAFT", "UNIT", "FIXTURE");
+  report("R2-03", "rule resolver VERIFIED_APPLICABLE", resolveRuleVerificationStatus({ sourceUrl: "https://gov/rule", effectiveDate: "2026-01-01" }).status === "VERIFIED_APPLICABLE", "UNIT", "FIXTURE");
+  report("R2-04", "previous-year template not verified (T10)", resolveRuleVerificationStatus({ sourceUrl: "https://gov/prev", previousYearOnly: true }).status === "PREVIOUS_YEAR_REFERENCE", "UNIT", "FIXTURE");
+  report("R2-05", "SOURCE_UNAVAILABLE ≠ not announced (T09)", resolveRuleVerificationStatus({ sourceUrl: "待官方" }).status === "SOURCE_UNAVAILABLE", "UNIT", "FIXTURE");
+  report("R2-06", "conflict → CONFLICTING (T11)", resolveRuleVerificationStatus({ sourceUrl: "https://gov/x", conflictDetected: true }).status === "CONFLICTING", "UNIT", "FIXTURE");
+  const fm = buildSubmissionFieldMap({ target: "JOURNAL_INITIAL_SUBMISSION", route: "JOURNAL_SCI_SSCI" });
+  report("R2-07", "author field human declaration (T23)", fm.fields.some((f) => f.fieldRef === "authors" && f.requiresHumanDeclaration), "UNIT", "FIXTURE");
+  report("R2-08", "field map NOT_READY (no fake READY)", fm.fields.every((f) => f.preparationState === "NOT_READY"), "UNIT", "FIXTURE");
+  const bundles = buildBundleManifests({ projectId: "p", documents: docsJournal, anonymizationRequired: true });
+  report("R2-09", "external/internal bundle split (T32)", bundles.external.bundleKind === "EXTERNAL_SUBMISSION_BUNDLE" && bundles.internal.bundleKind === "INTERNAL_COMPLIANCE_EVIDENCE_PACKAGE", "UNIT", "FIXTURE");
+  report("R2-10", "title page editor-only under double-blind (T29/30)", bundles.external.files.find((f) => f.logicalRole === "TITLE_PAGE")?.recipientAudience === "EDITOR_ONLY", "UNIT", "FIXTURE");
+  report("R2-11", "internal evidence internal-audit only", bundles.internal.files.every((f) => f.recipientAudience === "INTERNAL_AUDIT"), "UNIT", "FIXTURE");
+  const fullSnap2 = buildFinalSubmissionPackageSnapshot({
+    workspaceId: fcJournal.workspaceId, projectId: fcJournal.projectId, workOrderId: fcJournal.workOrderId,
+    sourceSnapshot: lqJournal, route: fcJournal.route, profile: fcJournal.profile, rules: rulesJournal,
+    documents: readyDocs, manifest: buildApprovalSubjectManifest({ projectId: "p", documents: readyDocs, createdBy: "u" }),
+    approvals: [], requiredApprovals: 0,
+    anonymizationQa: { passed: true, issues: [] }, referencesQa: { passed: true, issues: [] }, renderQa: { passed: true, issues: [] },
+    freezeConfirmed: true, packageLocked: true, workOrder: wo, fieldMap: fm,
+    externalBundle: bundles.external, internalEvidencePackage: bundles.internal,
+  });
+  report("R2-12", "state machine LOCKED_READY + ready_for_action (T48/63)", fullSnap2.packageState === "LOCKED_READY" && fullSnap2.readyForAction === "READY_FOR_AUTHOR_SUBMISSION", "UNIT", "SYNTHETIC_PACKAGE_TEST");
+  report("R2-13", "submissionStatus NOT_SUBMITTED + authorized false (T63)", fullSnap2.submissionStatus === "NOT_SUBMITTED_BY_THIS_STAGE" && fullSnap2.submissionExecutionAuthorized === false, "UNIT", "SYNTHETIC_PACKAGE_TEST");
+}
 
 console.log(`\n=======================================================`);
 console.log(`STAGE 18 66-ITEM VERIFICATION RESULT: ${passCount} PASS, ${failCount} FAIL, ${notRunCount} NOT_RUN`);
