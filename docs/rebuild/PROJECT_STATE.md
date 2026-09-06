@@ -1,3 +1,23 @@
+## V3-U19-FULL：第十九階段「正式送件、狀態追蹤與審查往返」建置完成（2026-09-06/07 UTC）
+- **規格基準**：`docs/stage19/spec-v3-4.0.md`（依使用者 Telegram 訊息內文九節收錄）。
+- **上游 Gate 對照**：`FINAL_PACKAGE_LOCKED_AND_HANDOFF_READY`（packageLocked + decision ≠ NOT_READY）；未 lock 阻擋進入追蹤。
+- **核心實體與契約**：`lib/submission-tracking-v3-contract.ts`（SubmissionWorkOrder、ExternalAttempt（reservation→dispatch→OUTCOME_UNKNOWN）、SubmissionEvent（5 種 source tier）、ReceiptVerification、ExternalReview/ExternalReviewItem、UpstreamRevisionRef、FormalDecision、SubmissionTrackingSnapshot、Stage20ReceiverState、19 個錯誤碼）。
+- **核心服務**：`lib/submission-tracking-v3-service.ts`：承接 U18 `FinalSubmissionPackageSnapshot` 零重複輸入；pre-submit authorization（綁 target/actor/operation/content hash/有效期）；attempt reservation 後派送；timeout 標 OUTCOME_UNKNOWN（不自動重送/換 provider）；active-submission guard（不可繞過）；事件/回執（USER_REPORTED ≠ 官方收件；verified 僅 OFFICIAL 來源）；external review 隔離（≠ U09/U16 模擬）＋ per-item Response Matrix（需實際證據）；upstream revision ref；R1 再送（需新 QA/確認/lock/新授權）；正式決策僅 verified 來源；`SubmissionTrackingSnapshot`（stageKey=V3-U19，nextStageId=post-acceptance）與 Stage 20 receiver。
+- **後端 API 路由**（`/api/projects/:projectId/submission-tracking-v3/*`）：
+  * initialize（ACL＋body/DB 讀 U18 快照＋package-lock gate）
+  * attempt（reservation / DISPATCH / OUTCOME_UNKNOWN / VERIFY_RECEIPT；GUIDED_MANUAL）
+  * events（時間軸事件與回執，source tier 分流）
+  * review（CREATE_REVIEW / ADD_ITEM / RESPOND / UPSTREAM_REF / DECISION）
+  * complete（R1 再送授權→SubmissionTrackingSnapshot→持久化 stageId=`submission-tracking`，idempotencyKey=`comp_st_<snapshotId>`＋U20 receiver）
+  * export（json／timeline／response-matrix／qa-report／markdown，其餘 EXPORT_FORMAT_UNSUPPORTED）
+  * receiver（U20 可重開接收頁，不空白、不循環 Gate）
+- **驗收證據（實際執行）**：
+  * `scripts/verify-stage19-full-72-items.ts`：**72/72 PASS，3 NOT_RUN**（LIVE 官方入口送件、email/webhook 入站連線、UI 深度整合）。
+  * `scripts/verify-stage19-stage20-consumer-contract.ts`：**44/44 PASS**。
+  * `npx tsc --noEmit`：0 errors；回歸：U18（79）、U17（66）、U16（60）、U15（60）、U14（60）、U13（48）。
+- **誠實標記**：submission_execution_authorized=false 恆定（除非使用者明確授權）；GUIDED_MANUAL 不臆造 endpoint；等待審查是正常狀態不捏造接受；Reviewer recommend accept ≠ editor accept；接受≠出版、核定≠款到或人體研究授權；R1 ≠ R0（需新授權）；fixture ≠ 真實稿件已送件；未部署 Zeabur、未跑正式 DB migration。
+- **停止邊界**：完成第十九階段後停止，等待 V3-U20「接受／核定後作業與成果管理」指令。
+
 ## V3-U18-FULL-R2：第十八階段完整規格補強（2026-09-06/07 UTC）
 - **規格基準**：`docs/stage18/spec-v3-4.0.md`（641 行完整版；SHA-256 `5d608c92…aab07f5`，與使用者附檔逐字一致）。
 - **完整規格補強（相較 R1 摘要版）**：
