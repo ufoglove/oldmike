@@ -4,6 +4,12 @@
 // model itself and labelled as AI self-assessment, evidence always UNVERIFIED
 // until fresh verification.
 
+import {
+  PRIMARY_GOAL_IDS,
+  RESEARCH_GOAL_DEFINITIONS,
+  type PrimaryGoalId,
+} from "./research-goal-registry.ts";
+
 export const ONE_CLICK_INSPIRATION_CONTRACT = "one-click-inspiration/1.0.0" as const;
 export const RESEARCH_FOCUS_MAX_LENGTH = 200 as const;
 export const DEFAULT_CANDIDATE_COUNT = 10 as const;
@@ -14,14 +20,33 @@ export const DEFAULT_TOP3_COUNT = 3 as const;
 export const TOP3_COUNT = DEFAULT_TOP3_COUNT; // backward compatibility alias
 export const CANDIDATE_OUTPUT_LIMIT_BYTES = 192_000 as const;
 
-export const RESEARCH_GOALS = ["AUTO", "JOURNAL", "SSCI", "NSTC", "THREE_YEAR"] as const;
+// Unified with ResearchGoalRegistry (spec v3.3.0 Section 2/4):
+// Formal goals: JOURNAL_SCI_SSCI, NSTC_GENERAL, MOE_TPR
+// Auxiliary strategy/horizon options: AUTO, THREE_YEAR (preserved for UX backward-compat)
+// Legacy aliases: JOURNAL, SSCI, NSTC
+export const FORMAL_RESEARCH_GOALS = PRIMARY_GOAL_IDS;
+
+export const RESEARCH_GOALS = [
+  "AUTO",
+  "JOURNAL_SCI_SSCI",
+  "NSTC_GENERAL",
+  "MOE_TPR",
+  // Legacy & auxiliary aliases preserved for backward compatibility
+  "JOURNAL",
+  "SSCI",
+  "NSTC",
+  "THREE_YEAR",
+] as const;
 export type ResearchGoalId = (typeof RESEARCH_GOALS)[number];
 
 export const RESEARCH_GOAL_LABELS: Readonly<Record<ResearchGoalId, string>> = Object.freeze({
   AUTO: "自動判斷",
-  JOURNAL: "快速期刊",
-  SSCI: "SSCI／SCI論文",
-  NSTC: "科技部計畫",
+  JOURNAL_SCI_SSCI: RESEARCH_GOAL_DEFINITIONS.JOURNAL_SCI_SSCI.labelZh,
+  NSTC_GENERAL: RESEARCH_GOAL_DEFINITIONS.NSTC_GENERAL.labelZh,
+  MOE_TPR: RESEARCH_GOAL_DEFINITIONS.MOE_TPR.labelZh,
+  JOURNAL: "快速期刊（舊別名）",
+  SSCI: "SSCI／SCI論文（舊別名）",
+  NSTC: "國科會計畫（舊別名）",
   THREE_YEAR: "三年研究主軸",
 });
 
