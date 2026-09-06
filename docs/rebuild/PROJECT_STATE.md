@@ -1,3 +1,25 @@
+## V3-U16-FULL：第十六階段「老麥科學內容審查、Reviewer #2壓力測試與逐項修訂」建置完成（2026-09-06 UTC）
+- **規格基準**：`docs/stage16/spec-v3-4.0.md`（v3.4.0；依使用者 Telegram 訊息內文收錄，非附檔）。
+- **上游 Gate 對照**：`MANUSCRIPT_SCIENTIFIC_DRAFT_READY_FOR_REVIEW`（正式）；`WRITING_SCOPE_AND_SOURCES_READY`／`PLANNING_OUTLINE` 視為規劃模式，initialize 直接阻擋正式審查；不要求固定稿件 v1 字串。
+- **核心實體與契約**：`lib/scientific-review-v3-contract.ts`（ReviewWorkOrder、ScientificFinding 含 basis／alternativeExplanation／minimalRevisionPath／verificationStatus／duplicateOf、RevisionProposal、ReReviewDecision、MeaningConstraint、UpstreamReviewRequest、ScientificReviewSnapshot、Stage17ReceiverState）。
+- **核心服務**：`lib/scientific-review-v3-service.ts`：承接 U15 `ManuscriptWritingSnapshot` 零重複輸入；確定性機械 QA（數值綁定／幽靈數據／p 值／誠實非顯著／hash／表圖 refs）；Reviewer #2 建設性挑戰（證據＋替代解釋＋最小修正路徑，不強迫大樣本 RCT，全標 SIMULATED REVIEW）；Finding 去重；Author Response Matrix（作者可有據不同意）；重審決策（達上限保留未解問題 CLOSED_WITH_UNRESOLVED，不強制 PASS）；Scientific Meaning Constraints（數值／N／方向／時點／假設狀態／因果邊界保護值檢查）；`ScientificReviewSnapshot`（stageKey=V3-U16，nextStageId=translation-polish）與 Stage 17 receiver。
+- **後端 API 路由**（`/api/projects/:projectId/scientific-review-v3/*`）：
+  * initialize（ACL＋body/DB 讀 U15 快照＋規劃模式阻擋）
+  * reviewer2（SIMULATED 挑戰生成＋去重＋約束）
+  * findings（Finding／修訂／上游回送薄驗證層）
+  * respond（作者裁決＋回覆；ACCEPTED_RISK 不能解除虛構／無權／過期來源）
+  * re-review（重審裁決）
+  * complete（機械 QA＋Response Matrix＋重審＋Meaning Constraints＋快照建構＋持久化到 `stage_completion_snapshots`（stageId=`scientific-review`，idempotencyKey=`comp_sr_<snapshotId>`）＋U17 receiver）
+  * export（json／findings-manifest／meaning-constraints／qa-report／markdown，其餘 UNSUPPORTED）
+  * receiver（U17 可重開接收頁，不空白、不循環 Gate）
+- **驗收證據（實際執行）**：
+  * `scripts/verify-stage16-full-60-items.ts`：**60/60 PASS，3 NOT_RUN**（誠實分級；NOT_RUN＝UI 深度整合、LLM live Reviewer adapter、DOCX/PDF/LaTeX round-trip）。
+  * `scripts/verify-stage16-stage17-consumer-contract.ts`：**38/38 PASS**。
+  * `npx tsc --noEmit`：**0 errors**。
+  * 回歸：Stage 13（48/48）、Stage 14（60/60）、Stage 15（60/60）全數 PASS。
+- **誠實標記**：所有 AI 審查輸出標 SIMULATED REVIEW；Reviewer #2 為確定性規則引擎（LLM adapter NOT_RUN）；未部署 Zeabur、未跑正式 DB migration；fixture 通過不代表真實稿件審查完成。
+- **停止邊界**：完成第十六階段後停止，等待下一階段（V3-U17 翻譯與學術潤稿）指令。
+
 ## V3-U15-FULL-R2：第十五階段增量補全與誠實驗收（2026-09-06 UTC，第二輪）
 - **規格基準**：`docs/stage15/spec-v3-4.0.md`（v3.4.0；SHA-256 `0901c747…e17dcc3`，與使用者附檔逐字元一致）。
 - **本輪增量修復（相較於第一輪 U15）**：
