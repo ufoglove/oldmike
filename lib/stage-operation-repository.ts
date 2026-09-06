@@ -309,6 +309,41 @@ export class StageOperationRepository {
   }
 
   /**
+   * Get latest completion snapshot for a given stage
+   */
+  static async getLatestCompletionSnapshot(
+    workspaceId: string,
+    projectId: string,
+    stageId: string,
+  ): Promise<StageCompletionSnapshot | null> {
+    const pool = getPool();
+    const result = await pool.query(
+      `SELECT * FROM stage_completion_snapshots 
+       WHERE workspace_id = $1 AND project_id = $2 AND stage_id = $3
+       ORDER BY created_at DESC LIMIT 1`,
+      [workspaceId, projectId, stageId],
+    );
+    if (result.rows.length === 0) return null;
+    const r = result.rows[0];
+    return {
+      id: r.id,
+      workspaceId: r.workspace_id,
+      projectId: r.project_id,
+      stageId: r.stage_id,
+      status: r.status,
+      snapshotData: r.snapshot_data,
+      topicSnapshot: r.topic_snapshot,
+      lockManifest: r.lock_manifest,
+      handoffLimitations: r.handoff_limitations,
+      downstreamOpenRequirements: r.downstream_open_requirements,
+      nextStageId: r.next_stage_id,
+      createdByUserId: r.created_by_user_id,
+      idempotencyKey: r.idempotency_key,
+      createdAt: r.created_at?.toISOString?.() || r.created_at,
+    };
+  }
+
+  /**
    * Save an immutable StageCompletionSnapshot with idempotency protection
    */
   static async saveCompletionSnapshot(params: {
