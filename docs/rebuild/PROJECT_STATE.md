@@ -195,5 +195,19 @@
 - **交接快照**：`buildSubmissionNavigationSnapshot()` — 不可變快照至研究藍圖（`ROUTE_PLAN_READY` vs `PROVISIONAL_ROUTE_PLAN_READY`，spec §20）。
 - **測試**：`scripts/verify-stage03-batch-c-contracts.ts` 22/22 PASS、tsc 0；交付 `docs/rebuild/phase-03-route-data-contracts.md`。
 
+## V3-U03-R1 批次 D：80 項驗收收斂與文獻 API 全線連通（2026-09-06）
+- **文獻 API 全線實測 200 LIVE**：
+  * Consensus: `/v1/search` (200, 20筆, SJR 欄位確認)
+  * Semantic Scholar: `/graph/v1/paper/search` (200, total 43,013)
+  * OpenAlex: `/works` (200, 19,538 筆)
+  * Crossref: `/works` (200, total 2,217,832)
+  * arXiv: `/api/query` (200, 退避後成功)
+  * Zotero: `/users/.../items` (200, v3 header, item key 7IFV86Z3)
+  * Ai4Scholar: 官方端點 `/graph/v1/paper/search` 帶 Bearer 實測 200 (total 881)；`/api/credits` 實測 200 (會員 B active, 1906 點)
+- **Ai4Scholar adapter 落地**：commit `1c5d63e` — `createAi4ScholarAdapter()` + 能力快照升級。
+- **80 項驗收報告**：`docs/rebuild/phase-03-test-report.md` (39 LIVE, 18 REGRESSION, 23 CONTRACT/POLICY, 0 BLOCKED)。
+- **累計契約測試**：Batch A (33) + Batch B (34) + Batch C (22) = **89 PASS, 0 FAIL, tsc 0**。
+
+
 
 
