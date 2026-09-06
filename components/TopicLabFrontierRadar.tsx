@@ -43,16 +43,6 @@ const CAPABILITY_LABELS: Record<TopicLabSourceCapability, string> = {
   NOT_REQUESTED: "概念模式（未請求外部來源）", SCHOLARLY_DISABLED: "學術搜尋未啟用", SCHOLARLY_READY: "學術搜尋正常", SCHOLARLY_PARTIAL: "學術搜尋部分可用", SCHOLARLY_UNAVAILABLE: "學術搜尋不可用", MANUAL_PUBLIC_HTTPS: "手動公開來源", MANUAL_DISABLED: "手動來源未啟用",
 };
 
-// 快速靈感：每領域提供示範方向，純本機常數，不呼叫模型或外部 API
-const QUICK_IDEAS: Record<string, string[]> = {
-  "AI × 教育": ["生成式 AI 輔助個人化學習對大學生自主學習動機與學習成效的影響", "AI 寫作回饋工具對研究生學術寫作自我效能的作用機制"],
-  "AI × 職業安全與教育訓練": ["生成式 AI 虛擬教練在高風險作業人員安全訓練中的知識保留效果", "AI 風險辨識輔助系統對新進員工危害認知移轉的影響"],
-  "AI × 環境工程與環境資源管理": ["AI 預測模型在水資源管理中的決策支援與不確定性溝通", "深度學習影像辨識在廢棄物分類與循環經濟中的應用成效"],
-  "AI × 能源跨領域應用": ["AI 能源預測模型對再生能源調度的可靠度評估", "智慧電網中 AI 負載預測的信任與人機協作研究"],
-  "AR/VR/XR × 教育": ["沉浸式 VR 情境模擬對醫護學生臨床判斷能力之長期保留效果", "擴增實境在實驗室安全操作訓練中的即時引導成效"],
-  "AR/VR/XR × 職業安全與教育訓練": ["沉浸式 VR 訓練對高風險作業人員危害辨識與行為遷移的效果", "虛擬實境消防演訓中的壓力情境設計與決策品質研究"],
-};
-
 function isoDate(date: Date) { return date.toISOString().slice(0, 10); }
 function defaultWindow() { const to = new Date(); const from = new Date(Date.UTC(to.getUTCFullYear() - 3, to.getUTCMonth(), to.getUTCDate())); return { from: isoDate(from), to: isoDate(to) }; }
 function newKey(prefix: string) { const id = typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`; return `${prefix}:${id}`; }
@@ -67,6 +57,7 @@ export default function TopicLabFrontierRadar({
   onDraftCandidate,
   onPromoted,
   onSendToNavigator,
+  onNavigateToInspiration,
 }: {
   projectId?: string;
   initialView?: "lab" | "radar";
@@ -76,6 +67,7 @@ export default function TopicLabFrontierRadar({
   onDraftCandidate?: (candidate: TopicLabCandidate) => void;
   onPromoted?: () => void;
   onSendToNavigator?: (selected: TopicLabCandidate) => void;
+  onNavigateToInspiration?: () => void;
 }) {
   const [view, setView] = useState<"lab" | "radar">(initialAnalysis ? "radar" : initialView);
   const [researchDirection, setResearchDirection] = useState(initialConditions.researchDirection || initialConditions.context || "");
@@ -236,7 +228,16 @@ export default function TopicLabFrontierRadar({
 
     {view === "lab" && <form className="topic-radar-form" onSubmit={analyze} aria-busy={loading}>
       <label className="topic-research-direction">一句研究方向<span aria-hidden="true"> *</span><textarea required rows={4} maxLength={RESEARCH_DIRECTION_MAX_LENGTH} value={researchDirection} onChange={(event) => setResearchDirection(event.target.value)} placeholder="例如：改善高風險作業人員在沉浸式訓練後的危害辨識移轉" /><small>{researchDirection.length}/{RESEARCH_DIRECTION_MAX_LENGTH}；只需這一欄即可開始</small></label>
-      <div className="topic-quick-ideas" aria-label="快速靈感示範方向"><span className="topic-quick-ideas-label">沒有方向？點一下試試靈感</span><div className="topic-quick-ideas-list">{(QUICK_IDEAS[domain] || QUICK_IDEAS[canonicalDomains[0]]).map((idea) => <button type="button" key={idea} className="topic-quick-idea-chip" onClick={() => setResearchDirection(idea)}>{idea}</button>)}</div></div>
+      <div className="topic-quick-ideas" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", background: "#f3f8f5", borderRadius: 8, fontSize: 13, margin: "6px 0 12px" }}>
+        <span style={{ color: "#3a4a40" }}>💡 尚未有具體方向？</span>
+        {onNavigateToInspiration ? (
+          <button type="button" className="text-button" style={{ fontWeight: 700 }} onClick={onNavigateToInspiration}>
+            前往「老麥・一鍵靈感泉源」依三大目標生成 →
+          </button>
+        ) : (
+          <span style={{ color: "#5b6b63", fontSize: 12 }}>可從側欄「一鍵靈感」依目標產生候選題目</span>
+        )}
+      </div>
       <details className="topic-advanced-settings"><summary>進階設定（可選；留白時由老麥提出待確認建議）</summary><div className="topic-radar-form-grid">
         <label>專業領域<select value={domain} onChange={(event) => setDomain(event.target.value as CanonicalDomain | "")}><option value="">由老麥提出</option>{canonicalDomains.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <label>成果路徑<select value={outputTrack} onChange={(event) => setOutputTrack(event.target.value as OutputTrackId | "")}><option value="">由老麥提出</option>{outputTrackIds.map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
