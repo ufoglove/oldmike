@@ -211,3 +211,10 @@
 
 
 
+
+## V3-U03-R2 批次 A：三大目標單一來源修復（2026-09-06，commit `dcb95a5`）
+- **單一來源**：`lib/research-goal-registry.ts` 建立 `ResearchGoalRegistry`，正式三大目標固定為 `JOURNAL_SCI_SSCI`（SCI／SSCI 國際期刊）、`NSTC_GENERAL`（國科會一般研究計畫）、`MOE_TPR`（教育部教學實踐研究計畫）。
+- **修復一鍵靈感缺項**：`lib/one-click-inspiration-contract.ts` enum 加入 `MOE_TPR` 與 `JOURNAL_SCI_SSCI`，修復過去無教學實踐選項的問題；保留舊別名相容。
+- **消除前端手寫重複陣列**：`components/OneClickInspiration.tsx` 改為直接引用 `ResearchGoalRegistry`。
+- **向後相容與歷史保護**：`migrateLegacyGoal()` 完整保留 `rawLegacyValue`，不破壞既有專案與鎖定快照。
+- **測試**：`scripts/verify-stage03-r2-batch-a.ts` 15/15 PASS、tsc 0；交付 `docs/rebuild/phase-03-three-goal-registry.md`。
