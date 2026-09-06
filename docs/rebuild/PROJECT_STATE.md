@@ -259,3 +259,11 @@
   * 三目標切換 tabs（僅檢視，不改 GoalContext）；雷達/一鍵靈感快捷按鈕；卡片可點擊導航。
 - **整合位置**：首頁 renderOverview **最前排**（Home2WorkbenchOverview 之前，首屏一目了然，規格 §5）。
 - **實機驗證**：login 200 / health 200；六個樣式標記全數 FOUND。
+
+## V3-U03-FULL 批次 A：導航承接資料鏈 route 建立（2026-09-06，commit `765fca8` + `584de90`）
+- **navigation/initialize route**：從 stage_completion_snapshots(topic-lab) 讀 TopicSelectionSnapshot → 零重入建 SubmissionFingerprintVersion → 無快照回 TOPIC_SNAPSHOT_REQUIRED＋恢復導航（T03）。
+- **navigation/complete route**：建不可變 SubmissionNavigationSnapshot → 原子寫 stage_completion_snapshots(navigator→blueprint)＋冪等鍵（T35）。
+- **repo helper**：`getLatestCompletionSnapshot()`。
+- **前端斷層修復**：`candidateToNavigatorTopic` 原為死碼；`sendCandidateToNavigator` 接通 topic-lab/radar 的「送往投稿與計畫導航」（有專案直接承接、無專案 adopt→S0→navigator）。
+- **測試**：純邏輯鏈 15/15 PASS（指紋承接/快照路線就緒/blueprint 交接欄位完整）；DB 持久化測試 **BLOCKED**（本沙箱無 PostgreSQL binary，isolated PG 5433 本 session 不可用）；tsc 0。
+- **交付**：`docs/rebuild/stage03-full-batch-a.md`。
