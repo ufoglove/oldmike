@@ -150,7 +150,7 @@ export async function POST(
       upstreamRequests,
       authorResponseMatrixRef: matrix.matrixRef,
       mechanicalQa,
-      reviewer2Provided: findings.some((f) => f.reviewerRole === "REVIEWER_2"),
+      reviewer2Provided: findings.some((f) => f.reviewerRole === "REVIEWER_2_CHALLENGER"),
     });
 
     const stage17Receiver = buildStage17ReceiverState({ snapshot: reviewSnapshot, findings });

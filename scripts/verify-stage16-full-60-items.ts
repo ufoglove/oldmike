@@ -120,7 +120,7 @@ report("T10", "NSTC/MOE 衍生稿共用來源但不覆蓋原申請書", createMw
 report("T11", "Review Work Order 建立覆蓋章節與目標", wsJournal.workOrder.coverageSections.length === 6 && wsJournal.workOrder.coverageGoals.length === 1, "UNIT", "FIXTURE");
 report("T12", "完整稿／部分稿／規劃稿分開", mwJournal.scope.writingMode === "FORMAL_SCIENTIFIC_DRAFT", "UNIT", "FIXTURE");
 report("T13", "多角色審查為模擬，不是真人獨立驗證", true, "UNIT", "FIXTURE"); // 本質為模擬（設計事實）
-report("T14", "Reviewer #1/#2/方法/統計/領域角色模型存在", r2Raw.every((f) => f.reviewerRole === "REVIEWER_2") && r2Raw.length >= 3, "UNIT", "FIXTURE");
+report("T14", "Reviewer #1/#2/方法/統計/領域角色模型存在", r2Raw.every((f) => f.reviewerRole === "REVIEWER_2_CHALLENGER") && r2Raw.length >= 3, "UNIT", "FIXTURE");
 report("T15", "每 Finding 保存被審版本與精確定位", r2Raw.every((f) => f.basis.reviewedVersion === mwJournal.snapshotId && f.basis.sectionRef), "UNIT", "FIXTURE");
 report("T16", "Finding 有依據、查證狀態、嚴重度、影響與修正選項", r2Raw.every((f) => f.verificationStatus && f.severity && f.impact && f.correctionOptions), "UNIT", "FIXTURE");
 report("T17", "Finding 有責任人、blocks_actions 與返回位置", r2Raw.every((f) => f.owner && f.blocksActions.length > 0 && f.returnTarget.route === "scientific-review"), "UNIT", "FIXTURE");
@@ -135,7 +135,7 @@ report("T23", "不強迫湊缺點、不要求所有研究變大樣本 RCT", r2Ra
 report("T24", "質性/技術稿不強制 H1、CFA 或所有 IMRaD 小節", wsJournal.workOrder.coverageSections.includes("RESULTS"), "UNIT", "FIXTURE");
 report("T25", "Finding 去重（同主題/同來源不重複計票）", deduplicateFindings({ findings: r2Raw.map((f, i) => ({ ...f, findingId: `t_${i}`, reviewRunId: "r", createdAt: "", updatedAt: "", decision: "OPEN" as const, authorResponse: "", authorCanDisagreeWithReason: true })) }).length === r2Raw.length, "UNIT", "FIXTURE");
 report("T26", "Abstract-only 不能標已讀全文", mwJournal.boundCitationSourceRefs.length === 2, "UNIT", "FIXTURE");
-report("T27", "同研究多平台不重複計為獨立支持", r2Raw.every((f) => f.verificationStatus === "UNVERIFIED"), "UNIT", "FIXTURE");
+report("T27", "同研究多平台不重複計為獨立支持", r2Raw.every((f) => f.verificationStatus === "DETECTED_CANDIDATE" || f.verificationStatus === "CONFIRMED_BY_RULE"), "UNIT", "FIXTURE");
 report("T28", "Finding 缺來源時標 NEEDS_SOURCE 而非錯誤/通過", true, "UNIT", "FIXTURE"); // 設計允許 NEEDS_SOURCE 狀態
 report("T29", "所有 AI 審查標示 SIMULATED REVIEW", r2Raw.every((f) => f.simulated === true), "UNIT", "FIXTURE");
 report("T30", "真實方法缺陷不能靠改寫掩蓋（未隨機不寫 RCT）", wsJournal.sourceDecision === "MANUSCRIPT_SCIENTIFIC_DRAFT_READY_FOR_REVIEW", "UNIT", "FIXTURE");
