@@ -38,10 +38,12 @@ export default function ResearchWorkflowLightPanel({
   goalId,
   progress,
   onNavigate,
+  onGoalChange,
 }: {
   goalId: PrimaryGoalId;
   progress: RouteProgressInput[];
   onNavigate?: (nodeId: string) => void;
+  onGoalChange?: (goalId: PrimaryGoalId) => void;
 }) {
   const [view, setView] = useState<"graph" | "list">("graph");
   const template = WORKFLOW_ROUTE_TEMPLATES[goalId];
@@ -90,7 +92,24 @@ export default function ResearchWorkflowLightPanel({
           <p className="section-kicker">研究流程與完成燈號</p>
           <h3 style={{ margin: 0, fontSize: 16 }}>{goal.labelZh}</h3>
         </div>
-        <div style={{ display: "flex", gap: 6 }}>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+          {onGoalChange && (
+            <div role="tablist" aria-label="切換研究目標（僅檢視，不更改專案目標）" style={{ display: "flex", gap: 4, marginRight: 6 }}>
+              {(Object.keys(RESEARCH_GOAL_DEFINITIONS) as PrimaryGoalId[]).map((id) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={id === goalId}
+                  onClick={() => onGoalChange(id)}
+                  className={id === goalId ? "primary-button" : "text-button"}
+                  style={{ fontSize: 11, padding: "3px 8px" }}
+                >
+                  {RESEARCH_GOAL_DEFINITIONS[id].shortLabel}
+                </button>
+              ))}
+            </div>
+          )}
           <button type="button" className={view === "graph" ? "primary-button" : "text-button"} onClick={() => setView("graph")} style={{ fontSize: 12 }}>流程圖</button>
           <button type="button" className={view === "list" ? "primary-button" : "text-button"} onClick={() => setView("list")} style={{ fontSize: 12 }}>清單</button>
         </div>
@@ -117,6 +136,11 @@ export default function ResearchWorkflowLightPanel({
           <span style={{ color: "#5b6b63" }}>（{nodeTitle(nextIncomplete.state)}）</span>
           {onNavigate && <button type="button" className="text-button" onClick={() => onNavigate(nextIncomplete.node.nodeId)}>進入 →</button>}
         </div>
+      )}
+      {nextIncomplete?.node.nodeId === "research-goal-background" && (
+        <p style={{ marginTop: 8, fontSize: 12, color: "#5b6b63" }}>
+          提示：尚未建立或選擇專案時，上方僅為目標流程檢視（不會寫入任何資料）；建立／選擇專案後，流程燈號將依後端完成快照實際亮起。
+        </p>
       )}
     </section>
   );
