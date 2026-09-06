@@ -2,13 +2,19 @@
 
 import { useEffect, useRef, useState } from "react";
 
-type ResearchGoalId = "AUTO" | "JOURNAL" | "SSCI" | "NSTC" | "THREE_YEAR";
+import {
+  RESEARCH_GOAL_DEFINITIONS,
+  PRIMARY_GOAL_IDS,
+} from "@/lib/research-goal-registry";
+import { type ResearchGoalId } from "@/lib/one-click-inspiration-contract";
+
+// Formal goals directly mapped from ResearchGoalRegistry (spec v3.3.0 Section 2/4)
 const GOALS: { id: ResearchGoalId; label: string }[] = [
   { id: "AUTO", label: "自動判斷" },
-  { id: "JOURNAL", label: "快速期刊" },
-  { id: "SSCI", label: "SSCI／SCI論文" },
-  { id: "NSTC", label: "科技部計畫" },
-  { id: "THREE_YEAR", label: "三年研究主軸" },
+  { id: "JOURNAL_SCI_SSCI", label: RESEARCH_GOAL_DEFINITIONS.JOURNAL_SCI_SSCI.labelZh },
+  { id: "NSTC_GENERAL", label: RESEARCH_GOAL_DEFINITIONS.NSTC_GENERAL.labelZh },
+  { id: "MOE_TPR", label: RESEARCH_GOAL_DEFINITIONS.MOE_TPR.labelZh },
+  { id: "THREE_YEAR", label: "三年研究主軸（長程規劃）" },
 ];
 const RESEARCH_DOMAINS = [
   "AI跨領域應用，AI應用於教育，AI應用於職業安全與教育訓練，AI應用於環境工程與環境資源管理，AI應用於能源管理，VR/AR/XR跨領域應用於職業安全教育訓練與教育應用",
