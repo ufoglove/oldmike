@@ -1,3 +1,24 @@
+## V3-U18-FULL：第十八階段「目標期刊／計畫最終合規、送件文件與成果包」建置完成（2026-09-06/07 UTC）
+- **規格基準**：`docs/stage18/spec-v3-4.0.md`（依使用者 Telegram 訊息內文八節收錄）。
+- **上游 Gate 對照**：`LANGUAGE_EDITION_READY_FOR_FINAL_COMPLIANCE`；`USE_BLOCKED`／`SOURCE_STALE` 的 languageReleaseState 阻擋合規；`formal_compliance_allowed=false` 僅可做預檢，不自動變完整科學核准。
+- **核心實體與契約**：`lib/final-submission-v3-contract.ts`（SubmissionRoute、三路線 profile（Journal/Nstc/Moe）、OfficialRuleSnapshot、PackageDocument、ApprovalSubjectManifest、AuthorApprovalRecord、PackageReadiness、FinalSubmissionPackageSnapshot、Stage19ReceiverState、17 個錯誤碼）。
+- **核心服務**：`lib/final-submission-v3-service.ts`：承接 U17 `LanguageQualitySnapshot` 零重複輸入；三路線 profile；scope gate（partial 僅預檢）；規則快照（來源/條文/年度/版本/hash，不填未查證 APC/索引/截止日）；衍生文件 + renderer gate（DOCX/PDF/LaTeX 如實 UNSUPPORTED）；匿名化 QA（metadata/註解/修訂/表圖/附件，不只刪第一頁姓名）；References QA；ApprovalSubjectManifest（hash 不含 approval 事件，避免循環）；approve digest；freeze→confirm→lock；`FinalSubmissionPackageSnapshot`（stageKey=V3-U18，nextStageId=submission-tracking）與 Stage 19 receiver。
+- **後端 API 路由**（`/api/projects/:projectId/final-submission-v3/*`）：
+  * initialize（ACL＋body/DB 讀 U17 快照＋USE_BLOCKED/SOURCE_STALE 阻擋＋scope gate）
+  * check（匿名化/References/render QA）
+  * approve（核准綁定具體檔案 digest；通訊作者轉述不得冒充每位作者點擊）
+  * freeze（freeze 後才收 approval，避免 hash 循環）
+  * lock（真人確認＋核准齊備才 Package Lock；AI 鎖草稿 ≠ 作者同意）
+  * complete（QA→freeze→approvals→lock→FinalSubmissionPackageSnapshot→持久化 stageId=`final-compliance`，idempotencyKey=`comp_fs_<snapshotId>`＋U19 receiver）
+  * export（json／package-manifest／approval-subjects／qa-report／markdown，其餘 EXPORT_FORMAT_UNSUPPORTED）
+  * receiver（U19 可重開接收頁，不空白、不循環 Gate）
+- **驗收證據（實際執行）**：
+  * `scripts/verify-stage18-full-66-items.ts`：**66/66 PASS，3 NOT_RUN**（DOCX/PDF/LaTeX renderer round-trip、官方規則即時重驗、UI 深度整合）。
+  * `scripts/verify-stage18-stage19-consumer-contract.ts`：**44/44 PASS**。
+  * `npx tsc --noEmit`：0 errors；回歸：U17（66）、U16（60）、U15（60）、U14（60）、U13（48）。
+- **誠實標記**：submission_execution_authorized=false 恆定；READY_FOR_AUTHOR_SUBMISSION／READY_FOR_INSTITUTIONAL_REVIEW/SUBMISSION 均不等於 SUBMITTED 或官方核准；DOCX/PDF/LaTeX 無 renderer 標 UNSUPPORTED 不以 Markdown 冒稱可送件；靜態 References 不冒充 Zotero Word 動態欄位；未部署 Zeabur、未跑正式 DB migration；fixture ≠ 真實稿件已合規或已送件。
+- **停止邊界**：完成第十八階段後停止，等待 V3-U19「正式送件與審查追蹤」指令。
+
 ## V3-U17-FULL-R2：第十七階段完整規格補強（2026-09-06/07 UTC）
 - **規格基準**：`docs/stage17/spec-v3-4.0.md`（682 行完整版；SHA-256 `77025dc7…66d4c8`，與使用者附檔逐字一致）。
 - **完整規格補強（相較 R1 摘要版）**：
