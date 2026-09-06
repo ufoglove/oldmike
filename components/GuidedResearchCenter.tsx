@@ -34,6 +34,7 @@ import ProjectTrashCenter from "./ProjectTrashCenter";
 import OldMikeAssistControl, { OldMikeAssistWholeS0Control } from "./OldMikeAssistControl";
 import Home2WorkbenchOverview from "./home2/Home2WorkbenchOverview";
 import ResearchWorkflowLightPanel from "./ResearchWorkflowLightPanel";
+import ResearchPathRoadmap from "./ResearchPathRoadmap";
 import { PRIMARY_GOAL_IDS, type PrimaryGoalId } from "@/lib/research-goal-registry";
 import { canonicalDomains, outputTrackIds, researchPathStations, stageDefinitions, stageNumberFromKey, type CanonicalDomain, type OutputTrackId } from "@/lib/research-config";
 import { CONFIRMATION_PHRASE, normalizeS0Intake, type FieldErrors, type ProjectPreview, type ProjectSummary, type S0Intake } from "@/lib/project-contract";
@@ -443,6 +444,15 @@ async function logout() { await fetch("/api/auth/sign-out", { method: "POST", he
       if (next) { setCurrentProject(next); setActiveNav("overview"); }
     };
     return <>
+      {/* V3-U03-R2 研究路徑 Roadmap（首屏前排，使用者指定樣式：生命週期時間軸＋串聯路徑） */}
+      <ResearchPathRoadmap
+        goalId={(currentProject && PRIMARY_GOAL_IDS.includes(currentProject.outputTrack as PrimaryGoalId) ? currentProject.outputTrack : workflowGoalView) as PrimaryGoalId}
+        currentStage={currentProject?.currentStage || "S0_INTAKE"}
+        currentStationKey={null}
+        onNavigate={(id) => go(navId(id))}
+        showGoalSwitcher
+        onGoalChange={setWorkflowGoalView}
+      />
       {/* V3-HOME-02 研究工作台首頁：資訊架構、意圖入口、六群導航與功能說明 */}
       <Home2WorkbenchOverview
         currentProject={currentProject}
