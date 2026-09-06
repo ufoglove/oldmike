@@ -113,5 +113,39 @@ check("digest_budget_guard", !canExecuteDailyDigest(budgetPol, "2026-09-07", 10)
 const idemKey = makeDailyDigestIdempotencyKey("ws_1", "sched_main", "2026-09-06");
 check("digest_idempotency_key_has_date", idemKey.includes("2026-09-06") && idemKey.includes("ws_1"));
 
+// ===== A5 Relaxed Envelope (no filler, flexible candidate count) =====
+import { parseInspirationEnvelope } from "../lib/one-click-inspiration-contract.ts";
+
+function makeCandidateJson(i: number) {
+  return `{"titleZh":"中文標題${i}","titleEn":"Title ${i}","researchQuestion":"RQ${i}","literatureGap":"Gap${i}","innovation":"Inn${i}","theory":"Th","method":"Met","feasibility":"Feas","venue":"Ven","score":85}`;
+}
+
+// 7 candidates (less than 10) + 2 top entries (less than 3) -> must be ACCEPTED per spec A5
+const payload7 = JSON.stringify({
+  judgment: "老麥判斷",
+  evidenceStatus: "UNVERIFIED",
+  evidenceNote: "note",
+  candidates: [1, 2, 3, 4, 5, 6, 7].map((i) => JSON.parse(makeCandidateJson(i))),
+  top3: [
+    { candidateId: "inspiration_1", reason: "r1", pros: ["p"], risks: ["rk"] },
+    { candidateId: "inspiration_2", reason: "r2", pros: ["p"], risks: ["rk"] },
+  ],
+});
+const res7 = parseInspirationEnvelope(payload7);
+check("relaxed_envelope_7_candidates_accepted", res7.ok === true && res7.value.candidates.length === 7);
+check("relaxed_envelope_top2_accepted", res7.ok === true && res7.value.top3.length === 2);
+
+// duplicate candidate IDs in top entries rejected
+const payloadDup = JSON.stringify({
+  judgment: "老麥判斷",
+  evidenceStatus: "UNVERIFIED",
+  candidates: [1, 2].map((i) => JSON.parse(makeCandidateJson(i))),
+  top3: [
+    { candidateId: "inspiration_999_not_exist", reason: "r", pros: ["p"], risks: ["r"] },
+  ],
+});
+const resDup = parseInspirationEnvelope(payloadDup);
+check("relaxed_envelope_rejects_bogus_top_ref", resDup.ok === false);
+
 console.log(failures ? `\n${failures} FAILURE(S)` : "\nALL PASS");
 process.exit(failures ? 1 : 0);
