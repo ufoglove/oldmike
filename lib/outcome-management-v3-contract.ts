@@ -1,189 +1,384 @@
 /**
- * Outcome / Post-Acceptance & Award Management Contract (V3-U20-FULL)
- * Spec: docs/stage20/spec-v3-4.0.md
+ * Outcome / Post-Acceptance & Award Management Contract (V3-U20-FULL, R2)
+ * Spec: docs/stage20/spec-v3-4.0.md（完整 36 節，SHA-256 d056eade…，2026-09-07）
  *
- * 承接：U19 SubmissionTrackingSnapshot (v1.1) — 上游 Gate
- *   DECISION_VERIFIED_AND_OUTCOME_HANDOFF_READY。
- * 下游：OutcomeManagementSnapshot（無必做第 21 階段；可結案／歸檔／由使用者啟動新研究）。
- *
- * 涵蓋：
- * §2 三路線（JOURNAL_SCI_SSCI／NSTC_GENERAL／MOE_TPR）真正分開
- * §3 校樣(proof)與科學事實（proof bytes＋queries＋更正）
- * §4 核定後執行與成果報告（ExecutionReentryRequest、財務 Decimal、報告）
- * §5 權利、成果與歸檔（AM/proof/VOR、embargo、Zotero、ORCID、archive）
- * §6 Assist／Lock／ActionIntent 重核（送件授權不可重放為校樣/付款/簽約/公開）
- * §8 OutcomeManagementSnapshot + 72 項驗收
+ * 承接 U19 SubmissionTrackingSnapshot → 上游 Gate DECISION_VERIFIED_AND_OUTCOME_HANDOFF_READY。
+ * 下游 OutcomeManagementSnapshot（無臆造第 21 階段）。本輪提供：三路線異步狀態、
+ * proof/queries 校樣、rights/APC、award/finance、執行回流、成果報告、ResearchOutput、
+ * deposit/public release、closeout/archive，與 9 個 Gate＋17 個錯誤碼（§32/§33 官方）。
  */
 
 import { type PrimaryGoalId } from "./research-goal-registry.ts";
 
-export const OUTCOME_MANAGEMENT_CONTRACT_VERSION = "outcome-management/1.1.0" as const;
+export const OUTCOME_MANAGEMENT_CONTRACT_VERSION = "outcome-management/2.0.0" as const;
+
+// ───────────── §32 官方錯誤碼（17）─────────────
 export const OUTCOME_MANAGEMENT_ERROR_CODES = [
-  "HANDOFF_NOT_READY", // 上游非 ACCEPTED/GRANTED 且非允許準備之核實分支
+  "HANDOFF_SCHEMA_UNSUPPORTED",
   "DECISION_UNVERIFIED",
-  "SCOPE_NOT_ALLOWED", // post_decision_allowed_scope 未涵蓋
-  "EXTERNAL_ACTION_UNAUTHORIZED", // 過去送件授權 ≠ 校樣/付款/簽約/公開授權
-  "PROOF_VERSION_MISMATCH",
-  "LOCATION_NOT_RENDERED",
-  "QUERY_EVIDENCE_MISSING",
-  "FINANCE_SOURCE_UNVERIFIED",
-  "FINANCE_DOUBLE_COUNT",
-  "CLAIM_WITHOUT_EXECUTION_EVIDENCE",
-  "REPORT_PENDING_DATA",
-  "RIGHTS_SCOPE_DENIED",
-  "EMBARGO_PENDING_RECHECK",
-  "ORCID_SYNC_NOT_VERIFIED",
-  "ZOTERO_WRITE_UNAUTHORIZED",
-  "ARCHIVE_INTEGRITY_FAULT",
+  "SCOPE_DENIED",
+  "SOURCE_STALE",
+  "PROOF_ANCHOR_STALE",
+  "SCIENTIFIC_CHANGE_REVIEW_REQUIRED",
+  "RIGHTS_UNRESOLVED",
+  "PAYEE_UNVERIFIED",
+  "BUDGET_SOURCE_MISMATCH",
+  "FINANCIAL_RECONCILIATION_INCOMPLETE",
+  "EXECUTION_AUTH_REQUIRED",
+  "PUBLIC_RELEASE_BLOCKED",
+  "APPROVAL_DIGEST_STALE",
+  "OUTCOME_UNKNOWN",
   "LOCK_CONFLICT",
-  "LATE_OUTPUT_REJECTED",
-  "ROUTE_MISMATCH",
-  "OUTCOME_SAVE_FAILED",
+  "PROVIDER_UNSUPPORTED",
+  "ARCHIVE_INCOMPLETE",
 ] as const;
 export type OutcomeManagementErrorCode = (typeof OUTCOME_MANAGEMENT_ERROR_CODES)[number];
 
-// -------------------------------------------------------------
-// §2 三路線 profile
-// -------------------------------------------------------------
+// R1/R2 old→official aliases（相容保留）
+export const LEGACY_OM_ERROR_ALIASES: Record<string, OutcomeManagementErrorCode> = {
+  HANDOFF_NOT_READY: "DECISION_UNVERIFIED",
+  SCOPE_NOT_ALLOWED: "SCOPE_DENIED",
+  EXTERNAL_ACTION_UNAUTHORIZED: "SCOPE_DENIED",
+  PROOF_VERSION_MISMATCH: "PROOF_ANCHOR_STALE",
+  LOCATION_NOT_RENDERED: "PROOF_ANCHOR_STALE",
+  QUERY_EVIDENCE_MISSING: "SOURCE_STALE",
+  FINANCE_SOURCE_UNVERIFIED: "BUDGET_SOURCE_MISMATCH",
+  FINANCE_DOUBLE_COUNT: "FINANCIAL_RECONCILIATION_INCOMPLETE",
+  CLAIM_WITHOUT_EXECUTION_EVIDENCE: "EXECUTION_AUTH_REQUIRED",
+  REPORT_PENDING_DATA: "SOURCE_STALE",
+  RIGHTS_SCOPE_DENIED: "RIGHTS_UNRESOLVED",
+  EMBARGO_PENDING_RECHECK: "PUBLIC_RELEASE_BLOCKED",
+  ORCID_SYNC_NOT_VERIFIED: "SOURCE_STALE",
+  ZOTERO_WRITE_UNAUTHORIZED: "SCOPE_DENIED",
+  ARCHIVE_INTEGRITY_FAULT: "ARCHIVE_INCOMPLETE",
+  LATE_OUTPUT_REJECTED: "LOCK_CONFLICT",
+  OUTCOME_SAVE_FAILED: "HANDOFF_SCHEMA_UNSUPPORTED",
+};
+
+// ───────────── §2/§31 route & scopes ─────────────
 export type OutcomeRoute = "JOURNAL_SCI_SSCI" | "NSTC_GENERAL" | "MOE_TPR";
+export type OutcomeScopeKind = "PUBLICATION_DELIVERABLE" | "GRANT_ADMIN" | "REPORT_ROUND" | "RESEARCH_PROJECT" | "SINGLE_GOAL";
 
-/** Accepted≠Published/Indexed；Awarded≠FundsReceived/IRB/ExecutionAuthorized。 */
-export type PublicationStage = "ACCEPTED" | "IN_PROOF" | "PROOF_RETURNED" | "PUBLISHED_AT_SOURCE" | "INDEXED" | "POST_PUBLICATION_CORRECTION";
-export type AwardStage = "AWARD_NOTIFICATION" | "BASELINE_ESTABLISHED" | "CONTRACT_IN_PROCESS" | "CONTRACT_SIGNED" | "FUNDS_RECEIVED" | "IN_EXECUTION" | "REPORT_SUBMITTED" | "PROJECT_CLOSED";
-export type TprStage = "TPR_AWARDED" | "COURSE_APPROVED" | "TEACHING_UNDERWAY" | "OUTCOME_EXCHANGE" | "REPORT_SUBMITTED" | "FUND_CLAIMED" | "CURATED";
+// ───────────── §4 多維度狀態（不只一個 Completed）─────────────
+export type AcceptanceDimension = "ACCEPTED" | "ACCEPTED_SUBJECT_TO_CONDITIONS" | "NOT_ACCEPTED";
+export type ProductionDimension = "NOT_PRODUCTION" | "PRODUCTION_INITIATED" | "PROOF_ROUND" | "PROOF_RETURNED" | "VOR_PENDING" | "VOR_PUBLISHED_ONLINE" | "ISSUE_ASSIGNED";
+export type PublicationVisibility = "AM_ONLINE" | "VOR_ONLINE" | "PUBLISHED_IN_ISSUE" | "NOT_VISIBLE";
+export type IndexingDimension = "NOT_INDEXED_CHECKED" | "INDEXED" | "INDEXING_PENDING" | "UNVERIFIED";
+export type FundingDimension =
+  | "NOT_AWARDED"
+  | "AWARD_VERIFIED"
+  | "CONDITION_SATISFIED"
+  | "CONTRACT_IN_PROCESS"
+  | "CONTRACT_SIGNED"
+  | "DISBURSED"
+  | "EXPENSE_RECORDED"
+  | "RECONCILED"
+  | "CLOSED_EXTERNAL";
 
-// -------------------------------------------------------------
-// §3 校樣 Proof / Queries（保留 bytes，數字來源不可由 AI 重算）
-// -------------------------------------------------------------
-export type ProofVersion = {
+export type OutcomeStageFlags = {
+  acceptance: AcceptanceDimension;
+  production: ProductionDimension;
+  visibility: PublicationVisibility;
+  indexing: IndexingDimension;
+  funding: FundingDimension;
+};
+
+// ───────────── §2/§32 entity models ─────────────
+export type ProofRoundEntity = {
   proofId: string;
   caseId: string;
-  version: number;
-  bytesDigest: string; // proof bytes sha256
-  acceptedVersionRef: string; // 對應 accepted 版
-  pageLineLocator: string; // 定位版本
-  status: "RECEIVED" | "CHECKING" | "READY" | "CORRECTIONS_PENDING" | "RETURNED" | "VERIFIED_PUBLISHED_MATCH";
+  round: number;
+  bytesDigest: string;
+  acceptedVersionRef: string | null;
+  source: "PDF" | "HTML" | "XML" | "LATEX" | "MANUAL";
+  pageLineLocator: string;
+  status: "RECEIVED" | "CHECKED" | "CORRECTIONS_PENDING" | "RETURNED" | "INVALIDATED_BY_NEWER";
   createdAt: string;
 };
 
-export type ProofCheckItem = {
-  checkId: string;
+export type ProofIssueEntity = {
+  issueId: string;
   proofId: string;
-  field: "AUTHOR" | "AFFILIATION" | "FUNDING" | "EQUATION" | "SIGN" | "N_SIZE" | "GROUP" | "UNIT" | "TIMEPOINT" | "CITATION" | "TABLE_FIGURE" | "CAPTION" | "SUPPLEMENT" | "OTHER";
-  reference: string; // 對應 accepted 版或 Result Fact ref
-  derivedFromResultFact?: string; // 數字更正只能引用既有 Result Fact，不可 AI 重算
-  carried_from_previous_locator?: string; // 新 proof 重排後重新定位，不沿用舊行號
-  status: "PENDING" | "MATCHED" | "DIFF" | "CORRECTION_NEEDED";
-  note: string;
+  field: "TYPE" | "METADATA" | "NUMERIC" | "SCIENTIFIC" | "AUTHOR" | "RIGHTS_3RD_PARTY" | "SUPPLEMENT" | "OTHER";
+  original: string;
+  proposed: string;
+  location: string;
+  reason: string;
+  supportSourceRef?: string;
+  changesScience: boolean;
+  status: "PENDING_CONFIRM" | "CANDIDATE" | "ACCEPTED_AS_CORRECTION" | "RETURN_TO_U14_16";
 };
 
-export type PublisherQueryItem = {
+export type PublisherQueryEntity = {
   queryId: string;
   proofId: string;
+  externalId: string | null;
+  sourceType: "PUBLISHER_PRODUCTION_QUERY";
   rawText: string;
   hasRealReply: boolean;
-  modificationEvidenceRefs: string[]; // 需真實修改證據
-  status: "PENDING_REPLY" | "REPLY_DRAFTED" | "REPLY_VERIFIED" | "CHANGE_SENT";
+  actionPatchOrArtifactRefs: string[]; // 「已更正/已補檔」需真採用patch/artifact
+  status: "PENDING_REPLY" | "REPLY_DRAFTED" | "ACTION_EVIDENCE_MISSING" | "REPLY_VERIFIED";
 };
 
-export type CorrectionPackage = { kind: "PORTAL_CONTENT" | "ANNOTATED_PDF" | "OTHER"; packageId: string; approvedReturned: boolean; sourceConfirmedAllApplied: boolean };
+export type ProofCorrectionPackage = {
+  packageId: string;
+  proofId: string;
+  acceptedSourceRef: string;
+  queriesCoverage: string[]; // 已答 queryId
+  appliedCorrectionsRefs: string[];
+  replacedArtifactsRefs: string[];
+  humanConfirmations: string[];
+  digest: string;
+  status: "BUILDING" | "READY_TO_RETURN_PROOF" | "SENT";
+};
 
-// -------------------------------------------------------------
-// §4 核定後執行與成果報告（ExecutionReentry）+ 財務（Decimal）
-// -------------------------------------------------------------
+export type AcceptedArtifactBaseline = {
+  baselineId: string;
+  acceptedVersionRef: string | null;
+  versionResolved: boolean; // AC = false 標 ACCEPTED_VERSION_UNRESOLVED
+  sourceRef: string;
+};
+
+// ───────────── §13/§14 rights & invoice ─────────────
+export type PublicationRightsProfile = {
+  rightsId: string;
+  artifactVersionRef: string;
+  licence: string | null;
+  usageScope: string;
+  publicTiming: string | null;
+  embargoUntil: string | null;
+  thirdPartyMaterialsOk: boolean;
+  funderInstitutionConditionsRefs: string[];
+  status: "ACTIVE" | "RIGHTS_RECONCILIATION_REQUIRED" | "RESOLVED";
+};
+
+export type InvoiceObservation = {
+  invoiceId: string;
+  invoiceNo: string | null;
+  publisherVendorRef: string;
+  caseOrArticleId: string;
+  currency: string;
+  amountMinor: string | null; // null=未知，不是 0
+  sourceFileHash: string | null;
+  dueRuleRef: string | null;
+  financeOwnerRef: string;
+  payeeVerification: "OK" | "PAYEE_VERIFICATION_REQUIRED";
+  status: "QUOTE" | "INVOICE_ISSUED" | "WAIVER_GRANTED" | "PAYMENT_EVIDENCE" | "PUBLISHER_CONFIRMED";
+};
+
+// ───────────── §17/§19 award & finance ─────────────
+export type GrantAwardBaseline = {
+  awardId: string;
+  authority: string;
+  programType: string;
+  callYear: string;
+  applicationId: string;
+  awardIdOfficial: string | null;
+  piRef: string;
+  institutionRef: string | null;
+  fullOrStagedAward: "FULL" | "STAGED_YEARLY";
+  approvedStart: string | null;
+  approvedEnd: string | null;
+  amountMinor: string;
+  currency: string;
+  awardDocumentHash: string;
+  status: "REQUESTED" | "PREAPPROVED" | "AWARDED" | "CONTRACTED" | "DISBURSED" | "EXPENSE_RECORDED" | "RECONCILED";
+};
+
+export type FinancialObservation = {
+  obsId: string;
+  awardId: string;
+  kind: "COMMITMENT" | "INVOICE" | "PAYMENT" | "EXPENSE" | "ADJUSTMENT" | "CLAIM";
+  amountMinor: string;
+  currency: string;
+  counterpartKey?: string; // 去重（同一實際付款只算一次支出）
+  sourceVerified: boolean;
+  sourceRef: string;
+};
+
+// ───────────── §18 ExecutionReentryRequest ─────────────
 export type ExecutionReentryRequest = {
   reentryId: string;
   projectId: string;
+  awardRef: string | null;
   cycleRef: string;
   scope: { destinationStages: Array<"data-governance" | "analysis-execution" | "tooling" | "ethics">; requestedItems: string[] };
-  authorizedScopeDigest: string; // 只準回既有 Project/cycle；核定不解除執行條件
-  status: "DRAFT" | "AUTHORIZED" | "RETURNED_TO_U09_14";
+  conditionsImpactAssessed: boolean;
+  humanActivityBlockingRefs: string[]; // 若 U09/U12 阻擋則列出
+  status: "DRAFT" | "AUTHORIZED" | "RETURNED_TO_U09_14" | "BLOCKED_BY_CONDITIONS";
 };
 
-export type FinanceStage = "APPLIED" | "PRE_AWARDED" | "AWARDED" | "FUNDS_RECEIVED" | "COMMITTED" | "SPENT" | "CLAIMED";
-/** 財務只能 Decimal；承諾→invoice→付款不重複算支出。 */
-export type FinanceLedgerLine = {
-  lineId: string;
-  projectId: string;
-  stage: FinanceStage;
-  amountCents: string; // 以整數分紀錄（Decimal）來源驗證
-  sourceVerified: boolean;
-  sourceRef: string;
-  counterDoubleCountKey?: string; // 同一實際付款只記一次支出
-  note: string;
-};
-
-export type OutcomeReportBlock = {
-  blockId: string;
-  kind: "EXECUTION_SUMMARY" | "RESULT_CLAIM" | "OUTPUT_LINK" | "LIMITATION" | "PENDING_DATA";
-  title: string;
-  completedClaim: boolean; // true 需 Execution/Fact/Output 證據
+// ───────────── §22/§23 report ─────────────
+export type OutcomeReportRound = {
+  reportRoundId: string;
+  purpose: "GRANT_PROGRESS" | "GRANT_FINAL" | "FINANCIAL_RECONCILIATION_PREP" | "TEACHING_OUTCOME" | "TRAVEL" | "OTHER_APPLICABLE";
+  awardOrCycleRef: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
   evidenceRefs: string[];
-  status: "SKELETON" | "PENDING_DATA" | "HAS_EVIDENCE" | "READY";
+  fieldSkeletonOnly: boolean; // 未有真欄位=骨架
+  status: "SKELETON" | "PENDING_DATA" | "HAS_EVIDENCE" | "PACKAGE_READY" | "SUBMITTED" | "RECEIVED_CONFIRMED";
 };
 
-// -------------------------------------------------------------
-// §5 權利、成果與歸檔
-// -------------------------------------------------------------
-export type RightsEntity = {
-  rightsId: string;
-  whichArtifact: "AM" | "PROOF" | "VOR" | "SUPPLEMENT";
-  versionRef: string;
-  purposeScope: string;
-  grantedUsageScope: string;
-  notPublicUnlessRelicensed: boolean; // 去識別 ≠ 可公開
-  embargoRecheckTriggered: boolean; // embargo 到期觸發重核
+// ───────────── §25/§27 ResearchOutput & deposit ─────────────
+export type OutputKind = "JOURNAL_ARTICLE" | "CONFERENCE" | "DATASET" | "CODE_SOFTWARE_MODEL" | "PROTOCOL_INSTRUMENT" | "TEACHING_MATERIAL" | "REPORT" | "TECHNICAL_DELIVERABLE" | "OTHER_VERIFIED";
+export type ResearchOutputRecord = {
+  registerId: string;
+  familyId: string; // OutputFamily：實質成果
+  kind: OutputKind;
+  status: "INTERNAL_RECORD" | "VERIFIED_PUBLICATION" | "ACCEPTED_RECEIVED" | "PUBLICLY_AVAILABLE";
+  identifiers: Array<{ type: "DOI" | "PUBLICATION_ID" | "CODE_TAG" | "OTHER"; value: string }>;
+  visibility: "PRIVATE" | "PUBLIC";
+  evidenceRefs: string[];
+};
+export type DepositWorkOrder = {
+  depositId: string;
+  outputVersionRef: string;
+  destination: string;
+  licence: string | null;
+  embargoUntil: string | null;
+  status: "PRIVATE_DRAFT" | "DEPOSIT_REQUESTED" | "DEPOSIT_VERIFIED" | "EMBARGOED" | "PUBLIC_RELEASE_READY" | "PUBLICLY_AVAILABLE_VERIFIED";
 };
 
-export type ZoteroRefLine = { itemKey: string; libraryType: "user" | "group"; version: number; remoteWriteAllowed: boolean; syncedVerified: boolean };
-export type OrcidLine = { ownerId: string; synced: boolean; apiVerified: boolean; note: string };
-
-export type ArchiveEntity = {
+// ───────────── §24/§29 Closeout & archive ─────────────
+export type CloseoutScope = {
+  scopeId: string;
+  kind: OutcomeScopeKind;
+  requiredObligations: string[];
+  evidenceRefs: string[];
+  lateObligationsCustodianRefs: string[];
+  formalDisposition: "INTERNAL_COMPLETION" | "EXTERNALLY_CONFIRMED_CLOSEOUT" | "DISPOSITION_VERIFIED" | "REQUIRES_CONFIRMATION";
+};
+export type ArchiveManifest = {
   archiveId: string;
   sourceRefs: string[];
-  manifestDigest: string;
+  filesHashes: string[];
   aclScope: string;
   retention: string;
-  restoreVerified: boolean; // 隔離環境驗復原
+  futureObligationsRefs: string[];
+  restoreRecipe: string;
+  restoreVerified: boolean; // 隔離驗證
+  noReplayableSecrets: boolean;
 };
 
-// -------------------------------------------------------------
-// §7/§8 首頁 CTA / 下游狀態（無必做第 21 階段）
-// -------------------------------------------------------------
-export type NextStageCapability = "OUTCOME_OVERVIEW" | "CONTINUE_RESEARCH" | "CLOSE_ARCHIVE" | "USER_STARTS_NEW" | "NONE_REQUIRED";
+// ───────────── §31 Assist / Lock ─────────────
+export type AutomationPolicyLock = { state: "AUTOMATION_POLICY_LOCKED_DRAFT"; lockedBy: "ai" };
+export type HumanConfirmedState = { state: "HUMAN_APPROVED"; by: string; at: string };
 
-// -------------------------------------------------------------
-// §8 OutcomeManagementSnapshot（下游 receiver；無臆造第 21 階段）
-// -------------------------------------------------------------
+// ───────────── §33 Gates ─────────────
+export type OutcomeGate =
+  | "POST_DECISION_INTAKE_VERIFIED"
+  | "POST_DECISION_PLAN_BASELINE_READY"
+  | "PROOF_CORRECTION_PACKAGE_READY"
+  | "AWARD_EXECUTION_REENTRY_READY"
+  | "OUTCOME_REPORT_PACKAGE_READY"
+  | "OUTPUT_RECORD_VERIFIED"
+  | "PUBLIC_RELEASE_READY"
+  | "OUTCOME_SCOPE_CLOSURE_READY"
+  | "OUTCOME_ARCHIVE_VERIFIED";
+export const OUTCOME_GATES: OutcomeGate[] = [
+  "POST_DECISION_INTAKE_VERIFIED",
+  "POST_DECISION_PLAN_BASELINE_READY",
+  "PROOF_CORRECTION_PACKAGE_READY",
+  "AWARD_EXECUTION_REENTRY_READY",
+  "OUTCOME_REPORT_PACKAGE_READY",
+  "OUTPUT_RECORD_VERIFIED",
+  "PUBLIC_RELEASE_READY",
+  "OUTCOME_SCOPE_CLOSURE_READY",
+  "OUTCOME_ARCHIVE_VERIFIED",
+];
+
+export type NextActionToken =
+  | { route: "outcome-management"; action: "outcome-overview" }
+  | { route: "submission-tracking" } // 回 U19（報告送審/決策修正）
+  | { route: "research-execution"; action: "reentry" }
+  | { route: "close-archive" }
+  | { route: "new-research-seed" };
+
+// ───────────── §34 OutcomeManagementSnapshot（完整 schema）─────────────
 export type OutcomeManagementSnapshot = {
   snapshotId: string;
-  schemaVersion: "outcome-management/1.1.0";
+  schemaVersion: "outcome-management/2.0.0";
   stageKey: "V3-U20";
   workspaceId: string;
   projectId: string;
-  nextStageId: "closure-or-new-study"; // 非建置中的第 21 階段；提示可結案／歸檔／新研究
-  sourceSubmissionTrackingSnapshotId: string;
-  sourceSubmissionTrackingSnapshotHash: string;
-  primaryGoal: PrimaryGoalId;
+  outcomeScopeId: string;
+  caseId: string;
+  caseRevision: number;
+  documentId: string;
+  manuscriptId: string | null;
   documentPurpose: string;
-  decision: string; // 原文（from DecisionRecord）
-  route: OutcomeRoute;
-  postDecisionProcessingAllowed: boolean; // 上游映射
+  goalContextRevision: number;
+  fundingRoute: string;
+  publicationRoute: string;
+  inputSubmissionTrackingSnapshotRefs: string[];
+  inputSubmissionTrackingSnapshotHashes: string[];
+  verifiedDecisionRefs: string[];
+  decisionConditions: string[];
+  targetProfileRef: string | null;
+  postDecisionProcessingAllowed: boolean;
   postDecisionAllowedScopeRefs: string[];
-  allowedNextActions: string[];
-  nextExternalActionAuthorizedAsGiven: false; // 沿用 U19=false；不可重放
-  stage20createdAt: string;
+  acceptedOrAwardedBaselineRefs: string[];
+  policySnapshotRefs: string[];
+  obligationManifestRef: string | null;
+  deadlineExtensionRefs: string[];
+  ownerAssignments: string[];
+  proofRoundRefs: string[];
+  comparisonRefs: string[];
+  queryResponseRefs: string[];
+  proofCorrectionPackageRefs: string[];
+  authorConfirmationRefs: string[];
+  proofReceiptRefs: string[];
+  publicationRightsRefs: string[];
+  agreementObservationRefs: string[];
+  invoiceAndPaymentSummaryRefs: string[];
+  financialVisibilityPolicyRef: string | null;
+  publicationRecordRefs: string[];
+  versionAndNoticeRelations: string[];
+  indexingObservationRefs: string[];
+  awardBaselineRefs: string[];
+  awardChangeRefs: string[];
+  financialReconciliationRefs: string[];
+  executionReentryRefs: string[];
+  executionCycleRefs: string[];
+  reportRoundRefs: string[];
+  reportEvidenceManifestRef: string | null;
+  submittedReportPackageRefs: string[];
+  reportReceiptRefs: string[];
+  outputRegistryRefs: string[];
+  contributionMappingRefs: string[];
+  citationManifestRef: string | null;
+  zoteroManifestRef: string | null;
+  publicProfileUpdateObservations: string[];
+  depositWorkOrderRefs: string[];
+  releaseManifestRefs: string[];
+  depositReceiptRefs: string[];
+  closureScopeRefs: string[];
+  externalCloseoutEvidenceRefs: string[];
+  archiveManifestRefs: string[];
+  restoreVerificationRefs: string[];
+  retentionObligationRefs: string[];
+  scientificMeaningConstraintsRefs: string[];
+  resultReleaseRefs: string[];
+  sourceDependencies: string[];
+  sourceManifestHash: string;
+  locksManifest: string[];
+  privacyAccessConstraints: string[];
+  unresolvedIssueRefs: string[];
+  futureObligations: string[];
+  permittedActions: string[];
+  readyGates: OutcomeGate[];
+  flags: OutcomeStageFlags;
+  nextAction: NextActionToken;
+  nextExternalActionAuthorized: false; // §3 硬 false，不重放
+  createdAt: string;
 };
-
-/** 上游 Gate：僅 ACCEPTED/GRANTED 源核到位→正式接受/核定；其餘只準備。 */
-export function resolveOutcomeReadiness(params: { decision: string; sourceVerified: boolean; postDecisionProcessingAllowed: boolean }): {
-  readyForPostAcceptanceExecution: boolean;
-  allowPreparationOnly: boolean;
-} {
-  const formallyReady = params.sourceVerified && params.postDecisionProcessingAllowed && isAcceptedOrGranted(params.decision);
-  return { readyForPostAcceptanceExecution: formallyReady, allowPreparationOnly: !formallyReady };
-}
 
 export function isAcceptedOrGranted(decision: string): boolean {
   return decision === "ACCEPTED" || decision === "GRANTED";
+}
+
+/** 上游 Gate（§33 POST_DECISION_INTAKE）：decision 源核＋scope 匹配。 */
+export function intakeVerified(params: { decision: string; sourceVerified: boolean; postDecisionProcessingAllowed: boolean }): boolean {
+  return params.sourceVerified && params.postDecisionProcessingAllowed && isAcceptedOrGranted(params.decision);
 }

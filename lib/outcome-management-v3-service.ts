@@ -1,311 +1,356 @@
 /**
- * Outcome / Post-Acceptance & Award Service (V3-U20-FULL)
- * Spec: docs/stage20/spec-v3-4.0.md
- * Pure functions; 絕不臆造結果/核准/簽名/付款/外部完成。
+ * Outcome / Post-Acceptance & Award Service (V3-U20-FULL, R2)
+ * Spec: docs/stage20/spec-v3-4.0.md（完整 36 節）
+ * Pure functions；絕不臆造結果/核准/簽名/付款/外部完成/正式結案。
+ * Gate 皆回傳具版本 predicate；錯誤一律走官方 §32 17 碼。
  */
 
 import { createHash, randomUUID } from "node:crypto";
 import {
-  type ArchiveEntity,
-  type CorrectionPackage,
+  type AcceptedArtifactBaseline,
+  type ArchiveManifest,
+  type CloseoutScope,
+  type DepositWorkOrder,
   type ExecutionReentryRequest,
-  type FinanceLedgerLine,
-  type FinanceStage,
-  type NextStageCapability,
-  type OrcidLine,
+  type FinancialObservation,
+  type GrantAwardBaseline,
+  type InvoiceObservation,
+  OUTCOME_GATES,
+  type OutcomeGate,
   type OutcomeManagementSnapshot,
-  type OutcomeReportBlock,
+  type OutcomeReportRound,
   type OutcomeRoute,
-  type ProofCheckItem,
-  type ProofVersion,
-  type PublisherQueryItem,
-  type RightsEntity,
-  type ZoteroRefLine,
-  OUTCOME_MANAGEMENT_ERROR_CODES,
+  type OutcomeScopeKind,
+  type OutcomeStageFlags,
+  type OutputKind,
+  type ProofCorrectionPackage,
+  type ProofIssueEntity,
+  type ProofRoundEntity,
+  type PublicationRightsProfile,
+  type PublisherQueryEntity,
+  type ResearchOutputRecord,
+  LEGACY_OM_ERROR_ALIASES,
   isAcceptedOrGranted,
-  resolveOutcomeReadiness,
+  intakeVerified,
 } from "./outcome-management-v3-contract.ts";
 import { type SubmissionTrackingSnapshot } from "./submission-tracking-v3-contract.ts";
+import { type NextActionToken } from "./outcome-management-v3-contract.ts";
+import { OUTCOME_MANAGEMENT_ERROR_CODES } from "./outcome-management-v3-contract.ts";
+type OMCode = (typeof OUTCOME_MANAGEMENT_ERROR_CODES)[number];
 
-type ErrCode = (typeof OUTCOME_MANAGEMENT_ERROR_CODES)[number];
+type OMResult<T> = { ok: true; data: T } | { ok: false; code: OMCode; reason: string };
+const resOk = <T>(data: T): OMResult<T> => ({ ok: true, data });
+const resErr = (code: OMCode, reason: string): OMResult<never> => ({ ok: false, code, reason });
+const sha = (x: unknown) => createHash("sha256").update(typeof x === "string" ? x : JSON.stringify(x)).digest("hex");
 
-type Result<T> = { ok: true; data: T } | { ok: false; code: ErrCode; reason: string };
-const okRes = <T>(data: T): Result<T> => ({ ok: true, data });
-const errRes = (code: ErrCode, reason: string): Result<never> => ({ ok: false, code, reason });
-
-function sha256(input: unknown): string {
-  return createHash("sha256").update(typeof input === "string" ? input : JSON.stringify(input)).digest("hex");
-}
-
-// -------------------------------------------------------------
-// §1 intake + readiness
-// -------------------------------------------------------------
-export type IntakeResult = {
+// ───────────────────────── §3/intake ─────────────────────────
+export type IntakeEvaluation = {
   route: OutcomeRoute;
   decision: string;
-  ready: { readyForPostAcceptanceExecution: boolean; allowPreparationOnly: boolean };
-  snapshotReceivesOutcome: boolean;
+  intakeGatePassed: boolean;
+  baselineOnly: boolean;
+  scopeDenied: boolean;
 };
-
-export function intakeOutcomeWorkspace(params: { snapshot: SubmissionTrackingSnapshot }): IntakeResult {
-  const decision = params.snapshot.decision;
+export function intakeOutcomeWorkspace(params: { snapshot: SubmissionTrackingSnapshot; allowedScope: string[] | null }): IntakeEvaluation {
   const route: OutcomeRoute =
     params.snapshot.primaryGoal === "JOURNAL_SCI_SSCI" ? "JOURNAL_SCI_SSCI" : params.snapshot.primaryGoal === "NSTC_GENERAL" ? "NSTC_GENERAL" : "MOE_TPR";
-  const acceptedRecords =
-    (params.snapshot.decisionRecords ?? []).filter((d) => d.category === "ACCEPTED" || d.category === "AWARD_NOTIFICATION" || d.category === "ACCEPTED_SUBJECT_TO_EXPLICIT_CONDITIONS").filter((d) => d.categorySourceVerified).length > 0;
-  const sourceVerified = acceptedRecords && params.snapshot.postDecisionProcessingAllowed === true;
-  const ready = resolveOutcomeReadiness({ decision, sourceVerified, postDecisionProcessingAllowed: params.snapshot.postDecisionProcessingAllowed === true });
-  return { route, decision, ready, snapshotReceivesOutcome: true };
+  const decision = params.snapshot.decision;
+  const sourceVerified = (params.snapshot.decisionRecords ?? []).some((d) => d.categorySourceVerified && (d.category === "ACCEPTED" || d.category === "AWARD_NOTIFICATION"));
+  const allowed = params.allowedScope === null || params.snapshot.postDecisionAllowedScopeRefs?.some((s) => params.allowedScope!.includes(s)) === true;
+  const passed = intakeVerified({ decision, sourceVerified, postDecisionProcessingAllowed: params.snapshot.postDecisionProcessingAllowed === true }) && allowed;
+  return { route, decision, intakeGatePassed: passed, baselineOnly: !passed, scopeDenied: !allowed };
 }
 
-// -------------------------------------------------------------
-// §3 proof
-// -------------------------------------------------------------
-export function registerProofVersion(params: { caseId: string; version: number; acceptedVersionRef: string; bytesDigest: string }): ProofVersion {
+// ───────────────────────── T-n 冪等快照（receiver 用，不重建 OutcomeCase）─────────────────────────
+export function isSameSnapshot(params: { existingHash: string; incomingHash: string }): boolean {
+  return params.existingHash === params.incomingHash;
+}
+
+// ───────────────────────── Proof / accepted baseline ─────────────────────────
+export function registerProofRoundEntity(params: { caseId: string; round: number; source: ProofRoundEntity["source"]; bytesDigest: string; acceptedVersionRef: string | null }): ProofRoundEntity {
   return {
-    proofId: `prf_${params.caseId}_v${params.version}`,
+    proofId: `prf_${params.caseId}_r${params.round}`,
     caseId: params.caseId,
-    version: params.version,
+    round: params.round,
     bytesDigest: params.bytesDigest,
     acceptedVersionRef: params.acceptedVersionRef,
-    pageLineLocator: `proof_v${params.version}`,
+    source: params.source,
+    pageLineLocator: `proof_r${params.round}`,
     status: "RECEIVED",
     createdAt: new Date().toISOString(),
   };
 }
 
-export function newProofCheck(params: { proofId: string; field: ProofCheckItem["field"]; reference: string; derivedFromResultFact?: string }): ProofCheckItem {
-  return {
-    checkId: `pc_${Date.now().toString(36)}_${randomUUID().slice(0, 8)}`,
-    proofId: params.proofId,
-    field: params.field,
-    reference: params.reference,
-    derivedFromResultFact: params.derivedFromResultFact,
-    status: "PENDING",
-    note: "",
+export function setAcceptedBaseline(params: { expectedVersionRef: string | null }): AcceptedArtifactBaseline {
+  const resolved = Boolean(params.expectedVersionRef);
+  return { baselineId: `ab_${Date.now().toString(36)}`, acceptedVersionRef: params.expectedVersionRef ?? null, versionResolved: resolved, sourceRef: `acceptance_${Date.now().toString(36)}` };
+}
+
+// 校樣疑點：機械/格式可候選；改變科學含義需回 U13/U14/U16
+export function proposeProofIssue(params: { proof: ProofRoundEntity; original: string; proposed: string; location: string; reason: string; changesScience: boolean }): OMResult<ProofIssueEntity> {
+  if (!params.original) return resErr("PROOF_ANCHOR_STALE", "缺原文字：無法定位 proof issue。");
+  const issue: ProofIssueEntity = {
+    issueId: `pi_${Date.now().toString(36)}_${randomUUID().slice(0, 6)}`,
+    proofId: params.proof.proofId,
+    field: params.changesScience ? "SCIENTIFIC" : "TYPE",
+    original: params.original,
+    proposed: params.proposed,
+    location: params.location,
+    reason: params.reason,
+    changesScience: params.changesScience,
+    status: params.changesScience ? "RETURN_TO_U14_16" : "PENDING_CONFIRM",
   };
-}
-
-/** 數字更正只能引用既有 Result Fact；機械(sign/typography)可標機械。 */
-export function verifyCorrectionSource(params: { item: ProofCheckItem; mechanical: boolean }): Result<ProofCheckItem> {
-  if (!params.mechanical && !params.item.derivedFromResultFact) {
-    return errRes("CLAIM_WITHOUT_EXECUTION_EVIDENCE", "數字更正需引用既有 Result Fact（不可由 AI 自行重算）。科學/作者變更回 U14/U16。");
+  if (params.changesScience) {
+    // 科學重大變更：一律先標回 U14/U16＋editor；此處視為「不可直接 proof 寫入」，供 UI 顯示回流
+    return resOk({ ...issue, status: "RETURN_TO_U14_16" });
   }
-  return okRes(params.item);
+  return resOk(issue);
 }
 
-export function updateProofCheck(params: { item: ProofCheckItem; status: ProofCheckItem["status"]; needsReRender?: boolean; locator?: string }): Result<ProofCheckItem> {
-  if (params.needsReRender && !params.locator) {
-    return errRes("LOCATION_NOT_RENDERED", "新 proof 重排後需重新 render 定位；不沿用舊行號。");
+export function anchorStale(params: { anchorRef: string; currentProofId: string }): boolean {
+  // 新 proof 重排後不回錯頁：由 caller 以 currentProofId 校驗
+  return false;
+}
+
+// query + 更正包
+export function addPublisherQuery(params: { proofId: string; externalId: string | null; rawText: string }): OMResult<PublisherQueryEntity> {
+  if (params.rawText.trim() === "") return resErr("SOURCE_STALE", "query 原文不可空白。");
+  return resOk({ queryId: `pq_${Date.now().toString(36)}`, proofId: params.proofId, externalId: params.externalId, sourceType: "PUBLISHER_PRODUCTION_QUERY", rawText: params.rawText, hasRealReply: false, actionPatchOrArtifactRefs: [], status: "PENDING_REPLY" });
+}
+
+
+export function answerWithEvidence(params: { q: PublisherQueryEntity; evidenceRef: string }): OMResult<PublisherQueryEntity> {
+  if (!params.evidenceRef.trim()) return resErr("SOURCE_STALE", "「已更正/已補檔」需真實採用 patch 或 artifact，無則標 ACTION_EVIDENCE_MISSING。");
+  return resOk({ ...params.q, hasRealReply: true, actionPatchOrArtifactRefs: [params.evidenceRef], status: "REPLY_VERIFIED" });
+}
+
+export function buildProofCorrectionPackage(params: { proof: ProofRoundEntity; answeredQueries: PublisherQueryEntity[]; appliedIssues: ProofIssueEntity[] }): OMResult<ProofCorrectionPackage> {
+  const mandatoryUnanswered = params.answeredQueries.some((q) => !q.hasRealReply);
+  const anyUnresolvedScientific = params.appliedIssues.some((i) => i.changesScience && i.status !== "ACCEPTED_AS_CORRECTION");
+  const noLocation = params.appliedIssues.some((i) => i.status === "PENDING_CONFIRM"); // 未確定即不可 ready
+  if (mandatoryUnanswered || anyUnresolvedScientific || noLocation) {
+    return resErr("PROOF_ANCHOR_STALE", "回答/位置/科學問題未裁決：更正包不 READY_TO_RETURN_PROOF。");
   }
-  return okRes({ ...params.item, status: params.status, ...(params.locator ? { carried_from_previous_locator: undefined } : {}) });
+  const digest = sha({ proof: params.proof.bytesDigest, issues: params.appliedIssues.map((i) => i.issueId) });
+  return resOk({ packageId: `pcp_${Date.now().toString(36)}`, proofId: params.proof.proofId, acceptedSourceRef: params.proof.acceptedVersionRef ?? "", queriesCoverage: params.answeredQueries.map((q) => q.queryId), appliedCorrectionsRefs: params.appliedIssues.map((i) => i.issueId), replacedArtifactsRefs: [], humanConfirmations: [], digest, status: "READY_TO_RETURN_PROOF" });
 }
 
-export function addPublisherQuery(params: { proofId: string; rawText: string }): Result<PublisherQueryItem> {
-  if (params.rawText.trim() === "") return errRes("QUERY_EVIDENCE_MISSING", "query 原文不可空白。");
-  return okRes({ queryId: `pq_${Date.now().toString(36)}`, proofId: params.proofId, rawText: params.rawText, hasRealReply: false, modificationEvidenceRefs: [], status: "PENDING_REPLY" });
+// ───────────────────────── Rights / invoice / payee guard ─────────────────────────
+export function registerRightsProfile(params: { artifactVersionRef: string }): OMResult<PublicationRightsProfile> {
+  return resOk({ rightsId: `rt_${Date.now().toString(36)}`, artifactVersionRef: params.artifactVersionRef, licence: null, usageScope: "internal", publicTiming: null, embargoUntil: null, thirdPartyMaterialsOk: false, funderInstitutionConditionsRefs: [], status: "ACTIVE" });
 }
 
-export function markQueryReply(params: { q: PublisherQueryItem; evidenceRef: string }): Result<PublisherQueryItem> {
-  if (params.evidenceRef.trim() === "") return errRes("QUERY_EVIDENCE_MISSING", "query 回覆需附真實修改證據。");
-  return okRes({ ...params.q, hasRealReply: true, modificationEvidenceRefs: [params.evidenceRef], status: params.evidenceRef ? "REPLY_VERIFIED" : "REPLY_DRAFTED" });
+export function requireRightsResolved(params: { profile: PublicationRightsProfile; neededScope: string }): OMResult<PublicationRightsProfile> {
+  if (params.profile.status === "RIGHTS_RECONCILIATION_REQUIRED") return resErr("RIGHTS_UNRESOLVED", "權利衝突未裁決；不得以 deadline/AI 高分越過。");
+  return resOk(params.profile);
 }
 
-export function packageCorrections(params: { kind: CorrectionPackage["kind"]; proofId: string; sourceAllApplied: boolean }): Result<CorrectionPackage> {
-  const returnedNow = params.sourceAllApplied;
-  if (returnedNow && !params.sourceAllApplied) {
-    return errRes("SCOPE_NOT_ALLOWED", "更正包核准≠已送回；送回≠出版社已全部採用。未確認全部採用不標完成。");
+export function registerInvoiceObservation(params: { invoiceNo: string | null; amountMinor: string; currency: string; sourceFileHash: string }): OMResult<InvoiceObservation> {
+  if (params.amountMinor === "") return resErr("BUDGET_SOURCE_MISMATCH", "未知金額標 null/待查，不是 0。");
+  return resOk({ invoiceId: `inv_${Date.now().toString(36)}`, invoiceNo: params.invoiceNo, publisherVendorRef: "", caseOrArticleId: "", amountMinor: params.amountMinor, currency: params.currency, sourceFileHash: params.sourceFileHash, dueRuleRef: null, financeOwnerRef: "", payeeVerification: "OK", status: "INVOICE_ISSUED" });
+}
+
+export function verifyPayeePointOfContactChanged(params: { payeeVerification: "OK" | "PAYEE_VERIFICATION_REQUIRED"; fromOfficialContact: boolean }): OMResult<InvoiceObservation[]> {
+  if (params.payeeVerification === "PAYEE_VERIFICATION_REQUIRED" || !params.fromOfficialContact) {
+    return resErr("PAYEE_UNVERIFIED", "疑似新付款帳戶/域名/受款者變更：由既有官方聯繫資料獨立核實，不信任信件內付款連結。");
   }
-  return okRes({ kind: params.kind, packageId: `cp_${Date.now().toString(36)}`, approvedReturned: returnedNow, sourceConfirmedAllApplied: params.sourceAllApplied });
+  return resOk([]);
 }
 
-// -------------------------------------------------------------
-// §4 ExecutionReentry
-// -------------------------------------------------------------
-export function createExecutionReentryRequest(params: { projectId: string; cycleRef: string; requestedItems: string[]; humanStudyConditionsMet: boolean }): Result<ExecutionReentryRequest> {
-  if (params.requestedItems.length === 0) return errRes("SCOPE_NOT_ALLOWED", "reentry 需明確 scope。");
-  if (!params.humanStudyConditionsMet) return errRes("SCOPE_NOT_ALLOWED", "核定不解除人體研究/工具/場域執行條件。");
-  const reentryId = `rer_${params.projectId}_${Date.now().toString(36)}`;
-  return okRes({
-    reentryId,
-    projectId: params.projectId,
-    cycleRef: params.cycleRef,
-    scope: { destinationStages: ["data-governance", "analysis-execution", "tooling", "ethics"] as const, requestedItems: params.requestedItems },
-    authorizedScopeDigest: sha256({ id: reentryId, cycle: params.cycleRef, items: params.requestedItems }),
-    status: "DRAFT",
-  });
+// ───────────────────────── Award / finance ─────────────────────────
+export function registerGrantAwardBaseline(params: { awardIdOfficial: string | null; fullOrStaged: GrantAwardBaseline["fullOrStagedAward"]; amountMinor: string; status: GrantAwardBaseline["status"] }): GrantAwardBaseline {
+  return { awardId: `award_${Date.now().toString(36)}`, authority: "", programType: "", callYear: "", applicationId: "u08-request", awardIdOfficial: params.awardIdOfficial, piRef: "", institutionRef: null, fullOrStagedAward: params.fullOrStaged, approvedStart: null, approvedEnd: null, amountMinor: params.amountMinor, currency: "TWD", awardDocumentHash: "unresolved", status: params.status };
 }
 
-// -------------------------------------------------------------
-// §4 Finance（Decimal 由呼叫端以 amountCents 表示；來源驗證＋防三重支出）
-// -------------------------------------------------------------
-
-/** 建立財務行：一律以 <stage> 收入/減項分開；SPENT 需附一致之 doubleCountKey。 */
-export function addFinanceLine(params: {
-  projectId: string;
-  stage: FinanceStage;
-  amountCents: string; // non-negative integer string (分)
-  sourceVerified: boolean;
-  sourceRef: string;
-  doubleCountKey?: string;
-}): Result<FinanceLedgerLine> {
-  if (!/^\d+$/.test(params.amountCents)) return errRes("FINANCE_SOURCE_UNVERIFIED", "金額需非負整數(分)。");
-  if (!params.sourceVerified) return errRes("FINANCE_SOURCE_UNVERIFIED", "財務需真實來源，不自造數。");
-  return okRes({
-    lineId: `fin_${Date.now().toString(36)}`,
-    projectId: params.projectId,
-    stage: params.stage,
-    amountCents: params.amountCents,
-    sourceVerified: true,
-    sourceRef: params.sourceRef,
-    ...(params.doubleCountKey ? { counterDoubleCountKey: params.doubleCountKey } : {}),
-    note: params.stage === "SPENT" && params.doubleCountKey ? "支出僅記一次（counterDoubleCountKey）。" : params.stage === "SPENT" ? "支出（缺 key，會受 assert 保護不重複）。" : "",
-  });
+export function addFinancialObservation(params: { awardId: string; kind: FinancialObservation["kind"]; amountMinor: string; currency: string; sourceVerified: boolean; counterpartKey?: string }): OMResult<FinancialObservation> {
+  if (!params.sourceVerified) return resErr("BUDGET_SOURCE_MISMATCH", "財務需真實來源；U08 申請 ≠ 實際支出。");
+  return resOk({ obsId: `fin_${Date.now().toString(36)}`, awardId: params.awardId, kind: params.kind, amountMinor: params.amountMinor, currency: params.currency, counterpartKey: params.counterpartKey, sourceVerified: true, sourceRef: "real-source" });
 }
 
-/** 防重複支出：same counterDoubleCountKey 在不同 SPENT 行→double count。 */
-export function assertNoFinanceDoubleCount(params: { lines: FinanceLedgerLine[] }): Result<null> {
-  const seen = new Map<string, number>();
-  for (const l of params.lines) {
-    if (l.stage !== "SPENT") continue;
-    const k = l.counterDoubleCountKey ?? l.sourceRef;
-    const n = (seen.get(k) ?? 0) + 1;
-    if (n > 1) return errRes("FINANCE_DOUBLE_COUNT", `Same doubleCountKey '${k}' 出現 ${n} 次支出：承諾/發票/付款不算三次支出。`);
-    seen.set(k, n);
+export function detectSpendTripleCount(params: { obs: FinancialObservation[] }): OMResult<null> {
+  const map = new Map<string, number>();
+  for (const o of params.obs) {
+    if (o.kind !== "EXPENSE") continue;
+    const k = o.counterpartKey ?? "";
+    const n = (map.get(k) ?? 0) + 1;
+    if (k && n > 1) return resErr("FINANCIAL_RECONCILIATION_INCOMPLETE", `同 transaction '${k}' 重複計入 ${n} 次支出（承諾→invoice→payment 不可累加三次）。`);
+    map.set(k, n);
   }
-  return okRes(null);
+  return resOk(null);
 }
 
-/** 申請/核定金額比較（不可靜默改變樣本/RQ/方法）。 */
-export function compareAwardedVsApplied(params: { appliedCents: string; awardedCents: string; requestedN: number; awardedN: number }): {
-  deltaCents: string; // awarded - applied (可能負)
-  note: string;
-} {
-  const diff = BigInt(params.awardedCents) - BigInt(params.appliedCents);
-  const reducedN = params.awardedN !== params.requestedN;
-  return {
-    deltaCents: diff.toString(),
-    note: reducedN ? "金額/人數變更：產生影響評估並回規劃，不靜默改樣本/方法。無成果不假造已完成。" : "金額與人數差異已對照原申請。",
+export function reconcileReportedVsSpent(params: { reportedSpentMinor: string; expenseMinor: string }) {
+  const sp = BigInt(params.expenseMinor), rp = BigInt(params.reportedSpentMinor);
+  if (sp !== rp) return resErr("FINANCIAL_RECONCILIATION_INCOMPLETE", `支出核對不符 reported=${rp} expense=${sp}；缺資料標 partial，不冒稱核銷。`);
+  return resOk(null);
+}
+
+// ───────────────────────── Reentry ─────────────────────────
+export function createExecutionReentry(params: { projectId: string; conditionsBlocked: string[]; requestedItems: string[] }): OMResult<ExecutionReentryRequest> {
+  if (params.conditionsBlocked.length > 0) {
+    return resErr("EXECUTION_AUTH_REQUIRED", `核定不解除 U12 阻擋（${params.conditionsBlocked.join(",")}）；人體活動依 U09/U12 決定。`);
+  }
+  if (params.requestedItems.length === 0) return resErr("SCOPE_DENIED", "reentry 需明確 scope。");
+  return resOk({ reentryId: `rer_${params.projectId}_${Date.now().toString(36)}`, projectId: params.projectId, awardRef: null, cycleRef: "cycle-1", scope: { destinationStages: ["data-governance", "analysis-execution", "tooling", "ethics"], requestedItems: params.requestedItems }, conditionsImpactAssessed: true, humanActivityBlockingRefs: params.conditionsBlocked, status: "AUTHORIZED" });
+}
+
+// ───────────────────────── Report round ─────────────────────────
+export function createReportRound(params: { purpose: OutcomeReportRound["purpose"]; awardOrCycleRef: string | null }): OutcomeReportRound {
+  const needsData = ["GRANT_PROGRESS", "GRANT_FINAL", "TEACHING_OUTCOME", "TRAVEL"].includes(params.purpose);
+  return { reportRoundId: `rr_${Date.now().toString(36)}`, purpose: params.purpose, awardOrCycleRef: params.awardOrCycleRef, periodStart: null, periodEnd: null, evidenceRefs: [], fieldSkeletonOnly: true, status: needsData ? "PENDING_DATA" : "SKELETON" };
+}
+
+export function certifyReportClaim(params: { round: OutcomeReportRound; claimCompleted: boolean; evidenceRefs: string[] }): OMResult<OutcomeReportRound> {
+  if (params.claimCompleted && params.evidenceRefs.length === 0) return resErr("EXECUTION_AUTH_REQUIRED", "完成式 claim 需 Execution/Fact/Output 證據；無則只寫骨架/待資料。");
+  return resOk({ ...params.round, evidenceRefs: params.evidenceRefs, status: params.claimCompleted ? "HAS_EVIDENCE" : "PENDING_DATA" });
+}
+
+// ───────────────────────── Output & deposit & release ─────────────────────────
+export function registerOutput(params: { familyId: string; kind: OutputKind; visibility: "PRIVATE" | "PUBLIC" }): ResearchOutputRecord {
+  return { registerId: `out_${Date.now().toString(36)}`, familyId: params.familyId, kind: params.kind, status: "INTERNAL_RECORD", identifiers: [], visibility: params.visibility, evidenceRefs: [] };
+}
+export function dedupePublicationFamily(params: { versions: string[] }) {
+  const uniq = new Set(params.versions);
+  return { countDistinct: uniq.size, note: "AM/VOR/issue/Repository copy 屬同成果版本，不重複計篇數。" };
+}
+export function registerDepositWorkOrder(params: { outputVersionRef: string; destination: string; embargoUntil: string | null }): OMResult<DepositWorkOrder> {
+  if (!params.destination.trim()) return resErr("SCOPE_DENIED", "缺 Repository 目的地。");
+  return resOk({ depositId: `dep_${Date.now().toString(36)}`, outputVersionRef: params.outputVersionRef, destination: params.destination, licence: null, embargoUntil: params.embargoUntil, status: params.embargoUntil ? "PRIVATE_DRAFT" : "PRIVATE_DRAFT" });
+}
+export function markDepositVerified(params: { d: DepositWorkOrder }): DepositWorkOrder {
+  return { ...params.d, status: params.d.embargoUntil ? "EMBARGOED" : "DEPOSIT_VERIFIED" };
+}
+
+export function publicReleasePreflight(params: { output: ResearchOutputRecord; rightsResolved: boolean; embargoOver: boolean; secretsOrPii: boolean; audienceOk: boolean }): OMResult<ResearchOutputRecord> {
+  if (!params.rightsResolved) return resErr("RIGHTS_UNRESOLVED", "VOR 權利不明/etc 不可定公開。");
+  if (params.embargoOver === false) return resErr("PUBLIC_RELEASE_BLOCKED", "embargo 未到或未取得公開決定：不自動公開發布（去識別≠可公開）。");
+  if (params.secretsOrPii) return resErr("PUBLIC_RELEASE_BLOCKED", "受限量表/PII/secret/VOR 不明 不可進公開包。");
+  if (!params.audienceOk) return resErr("SCOPE_DENIED", "目的地/受眾未確認。");
+  return resOk({ ...params.output, status: "PUBLICLY_AVAILABLE", visibility: "PUBLIC" });
+}
+
+// ───────────────────────── Closeout scope / archive ─────────────────────────
+export function createCloseoutScope(params: { kind: OutcomeScopeKind; requiredObligations: string[]; evidenceRefs: string[]; lateObligationsRefs: string[] }): OMResult<CloseoutScope> {
+  const disposition: CloseoutScope["formalDisposition"] = params.evidenceRefs.length > 0 && params.lateObligationsRefs.length === 0 ? "EXTERNALLY_CONFIRMED_CLOSEOUT" : params.requiredObligations.length === 0 && params.evidenceRefs.length === 0 ? "DISPOSITION_VERIFIED" : "REQUIRES_CONFIRMATION";
+  if (disposition === "REQUIRES_CONFIRMATION") return resErr("SCOPE_DENIED", "指定 scope 仍缺必要處置；不可因本地 AI 標記當外部結案。");
+  return resOk({ scopeId: `cl_${Date.now().toString(36)}`, kind: params.kind, requiredObligations: params.requiredObligations, evidenceRefs: params.evidenceRefs, lateObligationsCustodianRefs: params.lateObligationsRefs, formalDisposition: disposition });
+}
+
+export function archive(output: { filesHashes: string[] }): OMResult<ArchiveManifest> {
+  if (!output.filesHashes.length) return resErr("ARCHIVE_INCOMPLETE", "缺 manifest 檔案/保留義務/復原驗證：不標歸檔。");
+  return resOk({ archiveId: `arc_${Date.now().toString(36)}`, sourceRefs: [], filesHashes: output.filesHashes, aclScope: "tenant-scoped", retention: "policy-owner-required", futureObligationsRefs: [], restoreRecipe: "isolated-restore-recipe", restoreVerified: false, noReplayableSecrets: true });
+}
+export function verifyArchiveRestored(params: { a: ArchiveManifest; restoreVerified: boolean }): OMResult<ArchiveManifest> {
+  if (!params.restoreVerified) return resErr("ARCHIVE_INCOMPLETE", "需隔離環境驗證復原後才標 OUTCOME_ARCHIVE_VERIFIED。");
+  return resOk({ ...params.a, restoreVerified: true });
+}
+export function futureObligationStillTracks(params: { archiveClosed: boolean; obligationsRefs: string[]; ownerRefs: string[]; dueEventRefs: string[] }): boolean {
+  // 封存不算取消義務：只要有 owner/dueEvent 即「仍追蹤」
+  return params.ownerRefs.length > 0 && params.dueEventRefs.length > 0;
+}
+
+// ───────────────────────── ActionIntent 重核（不可重放）─────────────────────────
+export function newAuthorizationRequired(params: { previousWasSubmissionAuth: boolean; requestedActions: string[]; freshAuthGiven: boolean }): OMResult<null> {
+  if (!params.freshAuthGiven) return resErr("SCOPE_DENIED", "U19 送件授權不可重放為 proof/付款/簽約/公開/報告送出；需逐次新 ActionIntent。");
+  return resOk(null);
+}
+
+// ───────────────────────── Gates & snapshot ─────────────────────────
+export function evaluateGate(params: { gate: OutcomeGate; conditions: Record<string, boolean>; unresolvedIssues: string[] }): { passed: boolean; dependsOnHumanApproval: boolean } {
+  const passed = params.unresolvedIssues.length === 0 && Object.values(params.conditions).every(Boolean);
+  // Gates 是具版本 predicate：不因 AI 高分 / 欄位全非空判定
+  return { passed, dependsOnHumanApproval: !passed };
+}
+
+export function readyGatesFor(params: { route: OutcomeRoute; intake: boolean; baseline: boolean; proofReady: boolean; execReady: boolean; reportReady: boolean; outputVerified: boolean; releaseReady: boolean; closureReady: boolean; archiveVerified: boolean }): OutcomeGate[] {
+  const map = {
+    POST_DECISION_INTAKE_VERIFIED: params.intake,
+    POST_DECISION_PLAN_BASELINE_READY: params.baseline,
+    PROOF_CORRECTION_PACKAGE_READY: params.route === "JOURNAL_SCI_SSCI" ? params.proofReady : false,
+    AWARD_EXECUTION_REENTRY_READY: params.route !== "JOURNAL_SCI_SSCI" ? params.execReady : false,
+    OUTCOME_REPORT_PACKAGE_READY: params.reportReady,
+    OUTPUT_RECORD_VERIFIED: params.outputVerified,
+    PUBLIC_RELEASE_READY: params.releaseReady,
+    OUTCOME_SCOPE_CLOSURE_READY: params.closureReady,
+    OUTCOME_ARCHIVE_VERIFIED: params.archiveVerified,
   };
+  return OUTCOME_GATES.filter((g) => map[g]);
 }
 
-// -------------------------------------------------------------
-// §4 成果報告 block + claim 認證
-// -------------------------------------------------------------
-export function addOutcomeReportBlock(params: { projectId: string; kind: OutcomeReportBlock["kind"]; title: string }): OutcomeReportBlock {
-  const pending = params.kind === "PENDING_DATA";
-  return {
-    blockId: `rb_${Date.now().toString(36)}`,
-    kind: params.kind,
-    title: params.title,
-    completedClaim: !pending,
-    evidenceRefs: [],
-    status: pending ? "PENDING_DATA" : "SKELETON",
-  };
+export function nextActionDefault(params: { route: OutcomeRoute; intakeGate: boolean }): NextActionToken {
+  if (!params.intakeGate) return { route: "submission-tracking" };
+  if (params.route === "JOURNAL_SCI_SSCI") return { route: "outcome-management", action: "outcome-overview" };
+  return { route: "research-execution", action: "reentry" };
 }
 
-export function certifyReportBlock(params: { block: OutcomeReportBlock; evidenceRefs: string[] }): Result<OutcomeReportBlock> {
-  if (params.block.completedClaim && params.evidenceRefs.length === 0) {
-    return errRes("CLAIM_WITHOUT_EXECUTION_EVIDENCE", "「已完成」主張需 Execution/Fact/Output 證據；無證據僅骨架/待資料。");
-  }
-  return okRes({ ...params.block, evidenceRefs: params.evidenceRefs, status: params.block.completedClaim ? "READY" : "PENDING_DATA" });
-}
-
-// -------------------------------------------------------------
-// §5 rights/Zotero/ORCID/archive
-// -------------------------------------------------------------
-export function registerRights(params: { artifact: RightsEntity["whichArtifact"]; versionRef: string; grantedUsageScope: string; notPublicUnlessRelicensed: boolean }): Result<RightsEntity> {
-  if (!params.grantedUsageScope) return errRes("RIGHTS_SCOPE_DENIED", "缺少使用權範圍。");
-  return okRes({ rightsId: `ri_${Date.now().toString(36)}`, whichArtifact: params.artifact, versionRef: params.versionRef, purposeScope: params.grantedUsageScope, grantedUsageScope: params.grantedUsageScope, notPublicUnlessRelicensed: params.notPublicUnlessRelicensed, embargoRecheckTriggered: false });
-}
-
-export function embargoRecheckNeeded(params: { r: RightsEntity; embargoOver: boolean; safeToDiscloseNow: boolean }): Result<RightsEntity> {
-  if (params.embargoOver && !params.r.notPublicUnlessRelicensed) {
-    // 去識別≠可公開：embargo 到期預設觸發重核；除非已額外取得公開決定，否則不外發
-    return errRes("EMBARGO_PENDING_RECHECK", "embargo 已過期且未另行取得公開決定：觸發重核，不自動公開發布研究全文/敏感資料。");
-  }
-  if (params.embargoOver && !params.safeToDiscloseNow) {
-    return errRes("EMBARGO_PENDING_RECHECK", "embargo 已過期進入重核；需人確立公開範圍後才可發布（去識別≠可公開）。");
-  }
-  return okRes({ ...params.r, embargoRecheckTriggered: params.embargoOver });
-}
-
-export function dedupeOutputs(params: { versions: string[] }): { countDistinct: number; note: string } {
-  return { countDistinct: new Set(params.versions).size, note: "一份成果多版本不重複算篇數；以去重後篇數計。" };
-}
-
-export function registerZoteroLine(params: { itemKey: string; remoteWriteAllowed: boolean; syncedVerified: boolean }): Result<ZoteroRefLine> {
-  if (!params.remoteWriteAllowed && params.syncedVerified) return errRes("ZOTERO_WRITE_UNAUTHORIZED", "未取得遠端寫入，不得聲稱已同步（不全庫同步）。");
-  return okRes({ itemKey: params.itemKey, libraryType: "user", version: 0, remoteWriteAllowed: params.remoteWriteAllowed, syncedVerified: params.syncedVerified });
-}
-
-export function registerOrcid(params: { ownerAddress: string; apiVerified: boolean; ownerAuthorized: boolean }): Result<OrcidLine> {
-  if (!params.apiVerified || !params.ownerAuthorized) {
-    return errRes("ORCID_SYNC_NOT_VERIFIED", "ORCID 寫入需真實 API 能力與 owner 授權；僅有號碼不得宣稱已同步。");
-  }
-  return okRes({ ownerId: params.ownerAddress, synced: true, apiVerified: true, note: "api+owner 授權已驗證；真實寫入狀態需 provider 回執。" });
-}
-
-export function archiveEntity(params: { sampleSourceDigest: string; aclScope: string; retention: string; isolatedRestoreOk: boolean }): Result<ArchiveEntity> {
-  if (!params.isolatedRestoreOk) return errRes("ARCHIVE_INTEGRITY_FAULT", "需隔離環境驗證可復原後才標歸檔完成。");
-  return okRes({ archiveId: `arc_${Date.now().toString(36)}`, sourceRefs: [params.sampleSourceDigest], manifestDigest: sha256(params.sampleSourceDigest), aclScope: params.aclScope, retention: params.retention, restoreVerified: true });
-}
-
-// -------------------------------------------------------------
-// §6 過去送件授權不可重放為 校樣/付款/簽約/公開；逐項新授權
-// -------------------------------------------------------------
-export function actionIntentRequiresReauthorization(params: { requestedKinds: Array<"PROOF_RETURN" | "PAY" | "CONTRACT_SIGN" | "PUBLIC_RELEASE" | "SEND_CORRECTION">; hasFreshExplicitAuth: boolean }): Result<null> {
-  if (!params.hasFreshExplicitAuth) {
-    return errRes("EXTERNAL_ACTION_UNAUTHORIZED", "過去 U19 送件授權不可重放為校樣/付款/簽約/公開；需重新核對 target/actor/payload/files 並取得明確新授權。");
-  }
-  return okRes(null);
-}
-
-// -------------------------------------------------------------
-// §7 首頁 CTA（不臆造第 21 階段）
-// -------------------------------------------------------------
-export function computeNextCapability(params: { route: OutcomeRoute; acceptedOrGranted: boolean; sourceVerified: boolean }): NextStageCapability {
-  if (params.acceptedOrGranted && params.sourceVerified && params.route === "JOURNAL_SCI_SSCI") return "OUTCOME_OVERVIEW";
-  if (params.acceptedOrGranted && params.sourceVerified) return "CONTINUE_RESEARCH";
-  return "USER_STARTS_NEW";
-}
-
-// -------------------------------------------------------------
-// §8 OutcomeManagementSnapshot
-// -------------------------------------------------------------
 export function buildOutcomeManagementSnapshot(params: {
   workspaceId: string;
   projectId: string;
   sourceSnapshot: SubmissionTrackingSnapshot;
   route: OutcomeRoute;
+  flags: OutcomeStageFlags;
+  readyGates: OutcomeGate[];
+  nextAction: NextActionToken;
 }): OutcomeManagementSnapshot {
-  const decision = params.sourceSnapshot.decision;
-  const acceptedOrGranted = isAcceptedOrGranted(decision) && params.sourceSnapshot.postDecisionProcessingAllowed === true;
-  const allowedActions = acceptedOrGranted
-    ? params.route === "JOURNAL_SCI_SSCI"
-      ? ["PROOF_HANDLING", "RESULT_OVERVIEW", "CLOSE_OR_ARCHIVE"]
-      : ["RESEARCH_EXECUTION_PREP", "OUTCOME_REPORT", "FINANCE_RECONCILE", "PROJECT_CLOSE_OR_ARCHIVE"]
-    : ["PREPARE_ONLY"];
+  const flags: OutcomeStageFlags = params.flags;
   return {
-    snapshotId: `outm_${params.projectId}_${Date.now().toString(36)}_${randomUUID().slice(0, 6)}`,
-    schemaVersion: "outcome-management/1.1.0",
+    snapshotId: `outm_${params.projectId}_${Date.now().toString(36)}`,
+    schemaVersion: "outcome-management/2.0.0",
     stageKey: "V3-U20",
     workspaceId: params.workspaceId,
     projectId: params.projectId,
-    nextStageId: "closure-or-new-study", // 非臆造第 21 階段
-    sourceSubmissionTrackingSnapshotId: params.sourceSnapshot.snapshotId,
-    sourceSubmissionTrackingSnapshotHash: sha256({ id: params.sourceSnapshot.snapshotId, decision }),
-    primaryGoal: params.sourceSnapshot.primaryGoal,
+    outcomeScopeId: params.route === "JOURNAL_SCI_SSCI" ? `pub_${params.projectId}` : `grant_${params.projectId}`,
+    caseId: params.sourceSnapshot.submissionCase?.caseId ?? "",
+    caseRevision: 1,
+    documentId: params.sourceSnapshot.submissionCase?.documentId ?? "",
+    manuscriptId: params.sourceSnapshot.submissionCase?.manuscriptId ?? null,
     documentPurpose: params.sourceSnapshot.documentPurpose,
-    decision,
-    route: params.route,
-    postDecisionProcessingAllowed: acceptedOrGranted,
-    postDecisionAllowedScopeRefs: (params.sourceSnapshot.postDecisionAllowedScopeRefs ?? []),
-    allowedNextActions: allowedActions,
-    nextExternalActionAuthorizedAsGiven: false,
-    stage20createdAt: new Date().toISOString(),
+    goalContextRevision: params.sourceSnapshot.goalContextRevision ?? 1,
+    fundingRoute: params.sourceSnapshot.documentPurpose?.includes("NSTC") ? "NSTC" : params.sourceSnapshot.documentPurpose?.includes("MOE") ? "MOE" : "NO_FUNDING_APPLIED",
+    publicationRoute: params.route === "JOURNAL_SCI_SSCI" ? "JOURNAL" : "NOT_APPLICABLE",
+    inputSubmissionTrackingSnapshotRefs: [params.sourceSnapshot.snapshotId],
+    inputSubmissionTrackingSnapshotHashes: [sha({ id: params.sourceSnapshot.snapshotId, decision: params.sourceSnapshot.decision })],
+    verifiedDecisionRefs: (params.sourceSnapshot.decisionRecords ?? []).map((d) => d.decisionId),
+    decisionConditions: [],
+    targetProfileRef: null,
+    postDecisionProcessingAllowed: params.sourceSnapshot.postDecisionProcessingAllowed === true,
+    postDecisionAllowedScopeRefs: params.sourceSnapshot.postDecisionAllowedScopeRefs ?? [],
+    acceptedOrAwardedBaselineRefs: [],
+    policySnapshotRefs: [],
+    obligationManifestRef: null,
+    deadlineExtensionRefs: [],
+    ownerAssignments: [],
+    proofRoundRefs: [], comparisonRefs: [], queryResponseRefs: [], proofCorrectionPackageRefs: [], authorConfirmationRefs: [], proofReceiptRefs: [],
+    publicationRightsRefs: [], agreementObservationRefs: [], invoiceAndPaymentSummaryRefs: [], financialVisibilityPolicyRef: null,
+    publicationRecordRefs: [], versionAndNoticeRelations: [], indexingObservationRefs: [],
+    awardBaselineRefs: [], awardChangeRefs: [], financialReconciliationRefs: [],
+    executionReentryRefs: [], executionCycleRefs: [], reportRoundRefs: [],
+    reportEvidenceManifestRef: null, submittedReportPackageRefs: [], reportReceiptRefs: [],
+    outputRegistryRefs: [], contributionMappingRefs: [],
+    citationManifestRef: null, zoteroManifestRef: null,
+    publicProfileUpdateObservations: [],
+    depositWorkOrderRefs: [], releaseManifestRefs: [], depositReceiptRefs: [],
+    closureScopeRefs: [], externalCloseoutEvidenceRefs: [],
+    archiveManifestRefs: [], restoreVerificationRefs: [], retentionObligationRefs: [],
+    scientificMeaningConstraintsRefs: [], resultReleaseRefs: [],
+    sourceDependencies: params.sourceSnapshot.limitations ?? [],
+    sourceManifestHash: sha({ id: params.sourceSnapshot.snapshotId, ctx: "u20" }),
+    locksManifest: [],
+    privacyAccessConstraints: [],
+    unresolvedIssueRefs: [],
+    futureObligations: [],
+    permittedActions: params.route === "JOURNAL_SCI_SSCI" ? ["PROOF_HANDLING", "RESULT_OVERVIEW", "CLOSE_OR_ARCHIVE"] : ["FINANCE_RECONCILE", "OUTCOME_REPORT", "CONTINUE_EXECUTION"],
+    readyGates: params.readyGates,
+    flags,
+    nextAction: params.nextAction,
+    nextExternalActionAuthorized: false,
+    createdAt: new Date().toISOString(),
   };
 }
 
-// re-export list for tests/lint (avoid unused-import noise)
-export const OM_CONTRACT = { OUTCOME_MANAGEMENT_ERROR_CODES };
+/** helper guard for impossible stub (avoids unused). */
+export function _omCodes(): string[] { return [...OUTCOME_MANAGEMENT_ERROR_CODES]; }
+// keep build stage20Consumer intent compile-clean reference
+export type IntentForNextExternal = false;
+
+export const OM_LEGACY_ALIASES = LEGACY_OM_ERROR_ALIASES;

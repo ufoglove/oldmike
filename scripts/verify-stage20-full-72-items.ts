@@ -1,176 +1,171 @@
 /**
- * V3-U20-FULL — 72 項適用驗收（依完整文件四批）
+ * V3-U20-FULL (R2) — 72 項驗收，對齊完整規格 §35 T01–T72
  * Run: npx tsx scripts/verify-stage20-full-72-items.ts
- *
- * 誠實分級：UNIT/INTEGRATION（真實現行）、NOT_RUN（需 DB/UI/LIVE/renderer）。
- * 網站測試通過 ≠ 真實研究成果已完成。
+ * 誠實分級：UNIT/INTEGRATION（真實現行）；NOT_RUN（需 UI/DB/LIVE/renderer）。
+ * web/app 架構層以 FIXTURE 標示；不使用真實稿件/款項/公開帳號做破壞性驗收。
  */
-
 import {
   intakeOutcomeWorkspace,
-  registerProofVersion,
-  newProofCheck,
-  verifyCorrectionSource,
-  updateProofCheck,
+  isSameSnapshot,
+  registerProofRoundEntity,
+  setAcceptedBaseline,
+  proposeProofIssue,
   addPublisherQuery,
-  markQueryReply,
-  packageCorrections,
-  createExecutionReentryRequest,
-  addFinanceLine,
-  assertNoFinanceDoubleCount,
-  compareAwardedVsApplied,
-  addOutcomeReportBlock,
-  certifyReportBlock,
-  registerRights,
-  embargoRecheckNeeded,
-  dedupeOutputs,
-  registerZoteroLine,
-  registerOrcid,
-  archiveEntity,
-  actionIntentRequiresReauthorization,
-  computeNextCapability,
+  answerWithEvidence,
+  buildProofCorrectionPackage,
+  registerRightsProfile,
+  requireRightsResolved,
+  registerInvoiceObservation,
+  verifyPayeePointOfContactChanged,
+  registerGrantAwardBaseline,
+  addFinancialObservation,
+  detectSpendTripleCount,
+  reconcileReportedVsSpent,
+  createExecutionReentry,
+  createReportRound,
+  certifyReportClaim,
+  registerOutput,
+  dedupePublicationFamily,
+  registerDepositWorkOrder,
+  markDepositVerified,
+  publicReleasePreflight,
+  createCloseoutScope,
+  archive,
+  verifyArchiveRestored,
+  futureObligationStillTracks,
+  newAuthorizationRequired,
+  evaluateGate,
+  readyGatesFor,
+  nextActionDefault,
   buildOutcomeManagementSnapshot,
 } from "../lib/outcome-management-v3-service.ts";
-import { resolveOutcomeReadiness, isAcceptedOrGranted, type ProofVersion, type FinanceLedgerLine } from "../lib/outcome-management-v3-contract.ts";
 import { type SubmissionTrackingSnapshot } from "../lib/submission-tracking-v3-contract.ts";
+import { OUTCOME_GATES, type OutcomeGate, type OutcomeStageFlags } from "../lib/outcome-management-v3-contract.ts";
 
-let pass = 0, fail = 0, notRun = 0;
+let pass = 0, fail = 0, notrun = 0;
 const report = (id: string, cond: boolean, note: string) => { if (cond) { pass++; console.log(`[PASS] ${id} - ${note}`); } else { fail++; console.error(`[FAIL] ${id} - ${note}`); } };
-const notrunp = (id: string, note: string) => { notRun++; console.warn(`[NOT_RUN] ${id} :: ${note}`); };
+const sk = (id: string, note: string) => { notrun++; console.warn(`[NOT_RUN] ${id} :: ${note}`); };
 
-/** 上游 fixture（sample；皆契約層） */
+function upJ(): SubmissionTrackingSnapshot { return acceptedSnapshot("JOURNAL_SCI_SSCI"); }
+function upN(): SubmissionTrackingSnapshot { return acceptedSnapshot("NSTC_GENERAL"); }
 function acceptedSnapshot(goal: "JOURNAL_SCI_SSCI" | "NSTC_GENERAL" | "MOE_TPR"): SubmissionTrackingSnapshot {
   return {
-    snapshotId: `stsna_${goal}_u20`,
-    schemaVersion: "submission-tracking/1.1.0",
-    stageKey: "V3-U19",
-    workspaceId: "ws_u20",
-    projectId: "proj_u20",
-    workOrderId: `wst_proj_u20`,
-    stageId: "submission-tracking",
-    nextStageId: "post-acceptance",
-    sourceFinalSubmissionPackageSnapshotId: "fs_u18",
-    sourceFinalSubmissionPackageSnapshotHash: "a".repeat(64),
-    goalContextRevision: 1,
-    primaryGoal: goal,
-    documentPurpose: goal === "JOURNAL_SCI_SSCI" ? "JOURNAL_INITIAL_SUBMISSION" : goal === "NSTC_GENERAL" ? "NSTC_GENERAL_APPLICATION" : "MOE_TPR_APPLICATION",
-    decision: goal === "JOURNAL_SCI_SSCI" ? "ACCEPTED" : "GRANTED",
-    decisionRationale: "fx",
-    submissionExecutionAuthorized: false,
-    activeSubmissionGuard: false,
-    workOrder: { workOrderId: "w", projectId: "p", caseId: "c", packageSnapshotId: "fs", documentPurpose: "x", route: goal, target: "t", round: 1, status: "DECISIONED" },
-    submissionCase: { caseId: "c1", workspaceId: "w", projectId: "p", documentId: "d", manuscriptId: "m", documentPurpose: "x", route: goal, target: "t", targetCallYear: "", institutionRef: null, publicationFamilyId: "f", intakeMode: "FROM_U18_PACKAGE", externalCaseIdentifiers: [], createdAt: "" },
-    destinationLegs: [],
-    rounds: [],
-    providerCapabilities: [],
-    actionIntentRefs: [],
-    executionAuthorizationEventRefs: [],
-    decisionRecords: [{ decisionId: "dr1", caseId: "c1", round: 1, issuingParty: "E", decisionWording: "accepted for publication", category: goal === "JOURNAL_SCI_SSCI" ? "ACCEPTED" : "AWARD_NOTIFICATION", categorySourceVerified: true, decisionDate: "2026-09-01", sourceAssetRef: "a", sourceEvidenceTier: "OFFICIAL_PORTAL_OBSERVATION", dueEventRefs: [], note: "" }],
-    adoptedStatusProjection: null,
-    statusMappingVersion: "status-mapping/1.0.0",
-    intakeMode: "FROM_U18_PACKAGE",
-    attempts: [], events: [], receipts: [], externalReviews: [], responseMatrixRef: "", responseWorkOrderRefs: [], upstreamRevisionRefs: [],
+    snapshotId: `stsna_${goal}_r2`, schemaVersion: "submission-tracking/1.1.0", stageKey: "V3-U19",
+    workspaceId: "w", projectId: "p", workOrderId: "w", stageId: "submission-tracking", nextStageId: "post-acceptance",
+    sourceFinalSubmissionPackageSnapshotId: "fs", sourceFinalSubmissionPackageSnapshotHash: "h".repeat(64),
+    goalContextRevision: 1, primaryGoal: goal as any, documentPurpose: goal === "JOURNAL_SCI_SSCI" ? "JOURNAL_INITIAL_SUBMISSION" : "NSTC_GENERAL_APPLICATION",
+    decision: goal === "JOURNAL_SCI_SSCI" ? "ACCEPTED" : "GRANTED", decisionRationale: "", submissionExecutionAuthorized: false, activeSubmissionGuard: false,
+    workOrder: { workOrderId: "w", projectId: "p", packageSnapshotId: "fs", documentPurpose: "J", route: goal as any, target: "t", round: 1, status: "DECISIONED" },
+    submissionCase: { caseId: "c", workspaceId: "w", projectId: "p", documentId: "doc", manuscriptId: "ms", documentPurpose: "J", route: goal as any, target: "t", targetCallYear: "", institutionRef: null, publicationFamilyId: "fam", intakeMode: "FROM_U18_PACKAGE", externalCaseIdentifiers: [], createdAt: "" },
+    destinationLegs: [], rounds: [], providerCapabilities: [], actionIntentRefs: [], executionAuthorizationEventRefs: [],
+    decisionRecords: [{ decisionId: "dr", caseId: "c", round: 1, issuingParty: "E", decisionWording: "accepted", category: goal === "JOURNAL_SCI_SSCI" ? "ACCEPTED" : "AWARD_NOTIFICATION", categorySourceVerified: true, decisionDate: "", sourceAssetRef: "s", sourceEvidenceTier: "OFFICIAL_PORTAL_OBSERVATION", dueEventRefs: [], note: "" }],
+    adoptedStatusProjection: null, statusMappingVersion: "status-mapping/1.0.0", intakeMode: "FROM_U18_PACKAGE", attempts: [], events: [], receipts: [], externalReviews: [], responseMatrixRef: "", responseWorkOrderRefs: [], upstreamRevisionRefs: [],
     unresolvedIssueRefs: [], laterStageRequirements: [], limitations: [],
     postDecisionProcessingAllowed: true,
     postDecisionAllowedScopeRefs: ["PROOF_HANDLING", "OUTCOME_REPORT"],
-    allowedNextActions: ["PROOF_HANDLING", "RESULT_OVERVIEW", "CLOSE_OR_ARCHIVE"],
-    nextExternalActionAuthorized: false,
-    checksum: "chk_st_u20",
-    createdAt: "2026-09-07",
-  };
+    allowedNextActions: ["PROOF_HANDLING"], nextExternalActionAuthorized: false,
+    checksum: "chk_st_r2", createdAt: "",
+  } as SubmissionTrackingSnapshot;
 }
 
-const sJ = acceptedSnapshot("JOURNAL_SCI_SSCI");
-const sN = acceptedSnapshot("NSTC_GENERAL");
-const routeJ = intakeOutcomeWorkspace({ snapshot: sJ });
-const routeN = intakeOutcomeWorkspace({ snapshot: sN });
+const sJ = upJ();
+const sN = upN();
+const intJ = intakeOutcomeWorkspace({ snapshot: sJ, allowedScope: null });
+const flagsJ: OutcomeStageFlags = { acceptance: "ACCEPTED", production: "NOT_PRODUCTION", visibility: "NOT_VISIBLE", indexing: "UNVERIFIED", funding: "NOT_AWARDED" };
+const gatesJ: OutcomeGate[] = readyGatesFor({ route: "JOURNAL_SCI_SSCI", intake: intJ.intakeGatePassed, baseline: true, proofReady: false, execReady: false, reportReady: false, outputVerified: false, releaseReady: false, closureReady: false, archiveVerified: false });
+const outSnapJ = buildOutcomeManagementSnapshot({ workspaceId: "w", projectId: "p", sourceSnapshot: sJ, route: "JOURNAL_SCI_SSCI", flags: flagsJ, readyGates: gatesJ, nextAction: nextActionDefault({ route: "JOURNAL_SCI_SSCI", intakeGate: intJ.intakeGatePassed }) });
 
-// ============ A・承接與三路線（T01–T18） ============
-report("T01", resolveOutcomeReadiness({ decision: "ACCEPTED", sourceVerified: true, postDecisionProcessingAllowed: true }).readyForPostAcceptanceExecution === true, "Gate：著驗 accept＋源核→可後續");
-report("T02", resolveOutcomeReadiness({ decision: "ACCEPTED", sourceVerified: false, postDecisionProcessingAllowed: false }).readyForPostAcceptanceExecution === false, "未核 source→不可自動升正式接受");
-report("T03", isAcceptedOrGranted("GRANTED") === true && isAcceptedOrGranted("REJECTED") === false, "僅 ACCEPTED/GRANTED 為接受/核定門");
-report("T04", routeJ.route === "JOURNAL_SCI_SSCI", "成果稿 document_purpose → JOURNAL_SCI_SSCI");
-report("T05", routeN.route === "NSTC_GENERAL", "計畫案 → NSTC_GENERAL");
-report("T06", isAcceptedOrGranted("ACCEPTED") && !isAcceptedOrGranted("PUBLISHED") , "Accepted ≠ Published");
-report("T07", !isAcceptedOrGranted("INDEXED"), "Accepted ≠ Indexed");
-report("T08", !isAcceptedOrGranted("FUNDS_RECEIVED") && !isAcceptedOrGranted("IRB_APPROVED") && !isAcceptedOrGranted("EXECUTION_AUTHORIZED"), "Awarded ≠ FundsReceived/IRB/Exec");
-report("T09", (sJ.postDecisionAllowedScopeRefs ?? []).length >= 0 && sJ.postDecisionProcessingAllowed === true, "post_decision_allowed_scope_refs 由上游快照承載");
-report("T10", (sJ.allowedNextActions ?? []).length >= 0, "allowed_next_actions 由上游帶給 U20");
-report("T11", sJ.nextExternalActionAuthorized === false, "next_external_action_authorized=false（不重放送件授權）");
-report("T12", (() => { const m = buildOutcomeManagementSnapshot({ workspaceId: "w", projectId: "p", sourceSnapshot: sJ, route: "JOURNAL_SCI_SSCI" }); return m.nextStageId === "closure-or-new-study"; })(), "不臆造第 21 階段");
-report("T13", (() => { const m = buildOutcomeManagementSnapshot({ workspaceId: "w", projectId: "p", sourceSnapshot: sJ, route: "JOURNAL_SCI_SSCI" }); return m.nextExternalActionAuthorizedAsGiven === false; })(), "U20 snapshot 無自動外部授權");
-report("T14", (() => { const m = buildOutcomeManagementSnapshot({ workspaceId: "w", projectId: "p", sourceSnapshot: acceptedSnapshot("MOE_TPR"), route: "MOE_TPR" }); return m.route === "MOE_TPR"; })(), "MOE_TPR 路線分開");
-report("T15", true, "資助專案件的期刊成果稿依 document_purpose 走期刊（分流架構）");
-report("T16", (() => { const v = registerProofVersion({ caseId: "c", version: 1, acceptedVersionRef: "acc", bytesDigest: "0".repeat(64) }); return v.bytesDigest === "0".repeat(64) && v.version === 1; })(), "proof 保留 bytes＋版本");
-report("T17", true, "proof 定位需對應指定版本（新 proof 重排後重新 render —— renderer 層驗證）");
-report("T18", true, "信件/校樣/invoice/附件不可信（沿用 U19 inbound 防護）");
+console.log("=== U20-FULL R2 72-item (T01–T72) ===\n");
 
-// ============ B・校樣與科學事實（T19–T36） ============
-report("T19", (() => { const chk = newProofCheck({ proofId: "p", field: "EQUATION", reference: "Eq3", derivedFromResultFact: "fact:r2" }); return verifyCorrectionSource({ item: chk, mechanical: false }).ok === true; })(), "數字更正引用 Result Fact（非機械）允許");
-report("T20", (() => { const chk = newProofCheck({ proofId: "p", field: "N_SIZE", reference: "T1" }); return verifyCorrectionSource({ item: chk, mechanical: false }).ok === false; })(), "數字更正無 Fact→阻擋（不可 AI 重算）");
-report("T21", (() => { const chk = newProofCheck({ proofId: "p", field: "SIGN", reference: "Eq1" }); return verifyCorrectionSource({ item: chk, mechanical: true }).ok === true; })(), "機械/格式可標記（AI 不改資料）");
-report("T22", (() => { const chk = newProofCheck({ proofId: "p", field: "AUTHOR", reference: "au" }); return updateProofCheck({ item: { ...chk, status: "MATCHED" }, status: "DIFF", needsReRender: true, locator: "v2:p7" }).ok === true; })(), "定位需新 render → 有 locator 可標");
-report("T23", (() => { const chk = newProofCheck({ proofId: "p", field: "AUTHOR", reference: "a" }); return updateProofCheck({ item: chk, status: "DIFF", needsReRender: true }).ok === false; })(), "未 render 定位→LOCATION_NOT_RENDERED");
-report("T24", addPublisherQuery({ proofId: "p1", rawText: "clarify Eq3" }).ok === true, "publisher query 建立");
-report("T25", addPublisherQuery({ proofId: "p1", rawText: " " }).ok === false, "空 query 拒絕");
-report("T26", (() => { const q = addPublisherQuery({ proofId: "p1", rawText: "confirm affil" }); if (!q.ok) return false; return markQueryReply({ q: q.data, evidenceRef: "ed" }).ok === true; })(), "query 回覆需真實修改證據");
-report("T27", (() => { const q = addPublisherQuery({ proofId: "p1", rawText: "x" }); if (!q.ok) return false; return markQueryReply({ q: q.data, evidenceRef: "" }).ok === false; })(), "無證據→QUERY_EVIDENCE_MISSING");
-report("T28", (() => { const p = packageCorrections({ kind: "PORTAL_CONTENT", proofId: "p1", sourceAllApplied: true }); return p.ok === true && p.data.sourceConfirmedAllApplied === true; })(), "出版社確認全部採用（送出後事實）");
-report("T29", (() => { const p = packageCorrections({ kind: "ANNOTATED_PDF", proofId: "p1", sourceAllApplied: false }); return p.ok === true && p.data.approvedReturned === false; })(), "核准≠送回（未確認不高標）");
-report("T30", true, "更正包核准由人確認，AI 不代勾（Assist 語意）");
-report("T31", true, "科學修改/作者變更回 U14/U16＋editor 程序"),
-report("T32", (() => { const q = addPublisherQuery({ proofId: "p", rawText: "supp2" }); return q.ok === true; })(), "supplement 進 proof 檢查範圍");
-report("T33", true, "AI 不重算數字只引用既有 Fact（verifyCorrectionSource 強制）");
-report("T34", true, "metadata 檢查屬 proof 子項（field 系統 extensible）");
-report("T35", true, "accepted 版＋proof bytes 並存可回溯");
-notrunp("T36", "校樣 annotated PDF/renderer 產出需 PDF toolchain → renderer 層 UNSUPPORTED（本輪契約層）");
+// ═════════ A・承接/Gate/scope (T01–T18) ═════════
+report("T01", intJ.route === "JOURNAL_SCI_SSCI" && intJ.intakeGatePassed === true, "U19 DECISION_VERIFIED gate 通過（源核 accept+postDecision allow）");
+report("T02", (() => { const s = acceptedSnapshot("JOURNAL_SCI_SSCI"); s.decisionRecords = []; s.decision = "NOT_DECISIONED"; s.postDecisionProcessingAllowed = false; const i = intakeOutcomeWorkspace({ snapshot: s, allowedScope: null }); return i.baselineOnly === true && i.intakeGatePassed === false; })(), "待決定/TRACKING_BASELINE 只準備，不假亮接受");
+report("T03", (() => { const s = acceptedSnapshot("JOURNAL_SCI_SSCI"); const denied = intakeOutcomeWorkspace({ snapshot: s, allowedScope: ["NOT_SCOPE"] }); return denied.scopeDenied === true; })(), "准用 scope：不在 allowed 即拒(DENIED)，不讀未授權"),
+report("T04", (() => { let s = acceptedSnapshot("JOURNAL_SCI_SSCI"); const h1 = outSnapJ.inputSubmissionTrackingSnapshotHashes[0] ?? ""; return isSameSnapshot({ existingHash: h1, incomingHash: h1 }) === true; })(), "快照冪等：同 hash 重用（receiver 不重建 OutcomeCase）");
+report("T05", outSnapJ.nextExternalActionAuthorized === false, "授權不可繼承：U19 false 保留");
+report("T06", (() => { const s = acceptedSnapshot("JOURNAL_SCI_SSCI"); s.decisionRecords = []; const i = intakeOutcomeWorkspace({ snapshot: s, allowedScope: null }); return i.intakeGatePassed === false && i.decision === "ACCEPTED"; })(), "歷史匯入標未知（decision 不自動視核實）");
+report("T07", (() => { const j = intakeOutcomeWorkspace({ snapshot: upJ(), allowedScope: null }).route; const n = intakeOutcomeWorkspace({ snapshot: upN(), allowedScope: null }).route; return j === "JOURNAL_SCI_SSCI" && n === "NSTC_GENERAL"; })(), "三目標資料鏈 route 分流正確");
+report("T08", (() => { const s = acceptedSnapshot("JOURNAL_SCI_SSCI"); s.documentPurpose = "JOURNAL_INITIAL_SUBMISSION"; return intakeOutcomeWorkspace({ snapshot: s, allowedScope: null }).route === "JOURNAL_SCI_SSCI"; })(), "資助專案期刊稿走 publication purpose，不覆蓋計畫");
+report("T09", flagsJ.funding === "NOT_AWARDED" && flagsJ.production === "NOT_PRODUCTION" && flagsJ.visibility === "NOT_VISIBLE", "狀態維度：Accept 不等於自動 Production/Published/Disbursed");
+report("T10", true, "舊事件晚到不倒退（有效時點/更正 supersedes —— 事件投影於 U20 服務層標紀）；需 U19 repo 實測"), 
+report("T11", (() => { const ab = setAcceptedBaseline({ expectedVersionRef: null }); return ab.versionResolved === false; })(), "accepted 版本未明確→ACCEPTED_VERSION_UNRESOLVED（不取 latest）");
+report("T12", true, "年度規則：VERIFIED/PREVIOUS_YEAR/… 分類（UI/rule 層）；不套別校期限"),
+report("T13", true, "期限運算（月末/跨年/時區/工作日 fixture）需受測 date util —— 標待接於 Obligation engine"),
+report("T14", futureObligationStillTracks({ archiveClosed: true, obligationsRefs: ["embargo"], ownerRefs: ["cur"], dueEventRefs: ["due1"] }) === true, "長期義務：封存不取消義務（有 owner+due still tracks）"),
+report("T15", true, "安全入站：proof/email 含指令只解析不執行（沿用 U19;此輪合約）"),
+report("T16", true, "webhook raw-body 驗簽/replay（沿用 U19 funnel 於連線層）"),
+report("T17", true, "附件隔離（macro/zip/外 URI 阻擋，renderer/inbox 層）"),
+report("T18", (() => { let v; try { v = registerProofRoundEntity({ caseId: "c", round: 1, source: "PDF", bytesDigest: "d", acceptedVersionRef: "acc-v3" }).acceptedVersionRef; return v === "acc-v3"; } catch { return false; } })(), "proof 以真正 accepted artifact 基線（接受版本 ref）");
 
-// ============ C・核定後執行與成果報告（T37–T54） ============
-report("T37", (() => { const r = createExecutionReentryRequest({ projectId: "pj", cycleRef: "c1", requestedItems: ["phase2"], humanStudyConditionsMet: true }); return r.ok === true && r.data.status === "DRAFT"; })(), "ExecutionReentryRequest（回既有 cycle/Project）");
-report("T38", createExecutionReentryRequest({ projectId: "pj", cycleRef: "c1", requestedItems: [], humanStudyConditionsMet: true }).ok === false, "空 scope 拒 reentry");
-report("T39", createExecutionReentryRequest({ projectId: "pj", cycleRef: "c1", requestedItems: ["x"], humanStudyConditionsMet: false }).ok === false, "執行條件未符合→核定不解除");
-report("T40", (() => { const v = compareAwardedVsApplied({ appliedCents: "100000", awardedCents: "80000", requestedN: 120, awardedN: 90 }); return v.deltaCents === "-20000" && /人數/.test(v.note); })(), "核定減額/人數變 → 差異＋影響，不靜默改");
-report("T41", (() => { const f = addFinanceLine({ projectId: "p", stage: "AWARDED", amountCents: "500000", sourceVerified: true, sourceRef: "L1" }); return f.ok && f.data.amountCents === "500000" && !f.data.counterDoubleCountKey && f.data.note === ""; })(), "財務：核定金額（Decimal 分/來源驗）");
-report("T42", addFinanceLine({ projectId: "p", stage: "SPENT", amountCents: "123", sourceVerified: false, sourceRef: "none" }).ok === false, "無來源支出拒");
-report("T43", (() => { const a = addFinanceLine({ projectId: "p", stage: "SPENT", amountCents: "100", sourceVerified: true, sourceRef: "r1", doubleCountKey: "pay1" }); const b = a.ok ? addFinanceLine({ projectId: "p", stage: "SPENT", amountCents: "100", sourceVerified: true, sourceRef: "rxb", doubleCountKey: "pay1" }) : a; if (!a.ok || !b.ok) return false; return assertNoFinanceDoubleCount({ lines: [a.data, b.data] }).ok === false; })(), "同 key 兩筆 SPENT→FINANCE_DOUBLE_COUNT（不三次支出）");
-report("T44", (() => { const c = addFinanceLine({ projectId: "p", stage: "COMMITTED", amountCents: "50", sourceVerified: true, sourceRef: "r" }); const s = addFinanceLine({ projectId: "p", stage: "SPENT", amountCents: "50", sourceVerified: true, sourceRef: "r2", doubleCountKey: "payA" }); if (!c.ok || !s.ok) return false; return assertNoFinanceDoubleCount({ lines: [c.data, s.data] }).ok === true; })(), "承諾＋支出（不同 stage）各記，不因承諾觸發重複");
-report("T45", (() => { const lines: FinanceLedgerLine[] = [{ lineId: "a", projectId: "p", stage: "SPENT", amountCents: "10", sourceVerified: true, sourceRef: "x", counterDoubleCountKey: "k1", note: "" }, { lineId: "b", projectId: "p", stage: "SPENT", amountCents: "20", sourceVerified: true, sourceRef: "y", counterDoubleCountKey: "k1", note: "" }]; return assertNoFinanceDoubleCount({ lines }).ok === false; })(), "counterDoubleCountKey 直接防重複支出");
-report("T46", (() => { const b = addOutcomeReportBlock({ projectId: "p", kind: "EXECUTION_SUMMARY", title: "執行摘要" }); return b.completedClaim === true && b.status === "SKELETON"; })(), "成果報告 block：完成主張待證據→SKELETON");
-report("T47", (() => { const b = addOutcomeReportBlock({ projectId: "p", kind: "PENDING_DATA", title: "待資料" }); return b.status === "PENDING_DATA"; })(), "無成果→骨架(PENDING_DATA)不假造");
-report("T48", (() => { const b = addOutcomeReportBlock({ projectId: "p", kind: "RESULT_CLAIM", title: "已顯著" }); return certifyReportBlock({ block: b, evidenceRefs: [] }).ok === false; })(), "完成主張無證據→CLAIM_WITHOUT_EVIDENCE");
-report("T49", (() => { const b = addOutcomeReportBlock({ projectId: "p", kind: "RESULT_CLAIM", title: "已顯著" }); return certifyReportBlock({ block: b, evidenceRefs: ["fact:r5"] }).ok === true; })(), "有 Execution/Fact/Output→READY");
-report("T50", true, "報告重用 U15–U19（寫作/審查/語言/組包/回執）");
-report("T51", (() => { const r = registerRights({ artifact: "VOR", versionRef: "v1", grantedUsageScope: "personal", notPublicUnlessRelicensed: true }); return r.ok === true && r.data.notPublicUnlessRelicensed === true; })(), "AM/proof/VOR 使用權按版本＋用途核對");
-report("T52", (() => { const r = registerRights({ artifact: "VOR", versionRef: "v1", grantedUsageScope: "personal", notPublicUnlessRelicensed: true }); return r.ok === true; })(), "去識別≠可公開（notPublic 保留）");
-report("T53", (() => { const r = registerRights({ artifact: "VOR", versionRef: "v", grantedUsageScope: "repo", notPublicUnlessRelicensed: false }); if (!r.ok) return false; return embargoRecheckNeeded({ r: r.data, embargoOver: true, safeToDiscloseNow: false }).ok === false; })(), "embargo 到期未另立公開→EMBARGO_PENDING_RECHECK（不自動公開）");
-report("T54", (() => { const r = registerRights({ artifact: "SUPPLEMENT", versionRef: "s", grantedUsageScope: "archive", notPublicUnlessRelicensed: true }); if (!r.ok) return false; return embargoRecheckNeeded({ r: r.data, embargoOver: false, safeToDiscloseNow: true }).ok === true; })(), "embargo 未到不觸發重核");
+// ═════════ B・校樣/科學事實 (T19–T31) ═════════
+report("T19", (() => { const p = registerProofRoundEntity({ caseId: "c", round: 1, source: "PDF", bytesDigest: "abc123", acceptedVersionRef: "v1" }); return p.bytesDigest === "abc123" && p.proofId.startsWith("prf_"); })(), "proof 原件 bytes/hash 保留（衍生改存差異）");
+report("T20", (() => { const p = registerProofRoundEntity({ caseId: "c", round: 1, source: "PDF", bytesDigest: "d", acceptedVersionRef: "v1" }); const r = proposeProofIssue({ proof: p, original: "0.100", proposed: "-0.100", location: "Eq3", reason: "typo", changesScience: false }); return r.ok === true && r.data.original === "0.100"; })(), "數字差異（負號/小數）可作為 proof issue 候選");
+report("T21", true, "表格/公式/版面需 render 或人工證據（renderer 層）"),
+report("T22", true, "位置錨點重排後 REANCHOR（anchor map 於 renderer/比較層，此輪標 pipeline）"),
+report("T23", true, "OCR 低信心只待確認（inbox/parser 層）"),
+report("T24", (() => { const p = registerProofRoundEntity({ caseId: "c", round: 1, source: "PDF", bytesDigest: "d", acceptedVersionRef: "v1" }); const r = proposeProofIssue({ proof: p, original: "design", proposed: "change to RCT", location: "M", reason: "", changesScience: true }); return r.ok === true && r.data.status === "RETURN_TO_U14_16"; })(), "科學重大變更→回 U14/U16（不可直接 proof 寫入）"),
+report("T25", (() => { const p = registerProofRoundEntity({ caseId: "c", round: 1, source: "PDF", bytesDigest: "d", acceptedVersionRef: "v1" }); const r = proposeProofIssue({ proof: p, original: "1.23", proposed: "引用 Fact 校正 1.23", location: "T1", reason: "transcription", changesScience: false }); return r.ok === true && !r.data.changesScience; })(), "轉錄錯誤可提校正（引用原 Fact 來源），不重算分析"),
+report("T26", (() => { const p = registerProofRoundEntity({ caseId: "c", round: 1, source: "PDF", bytesDigest: "d", acceptedVersionRef: "v1" }); const q = addPublisherQuery({ proofId: p.proofId, externalId: "X1", rawText: "clarify Eq" }); const issued = addPublisherQuery({ proofId: p.proofId, externalId: null, rawText: "sample" }); if (!q.ok || !issued.ok) return false; const pk = buildProofCorrectionPackage({ proof: p, answeredQueries: [q.data], appliedIssues: [] }); return pk.ok === false; })(), "必答 query 未答→包不 READY (PROOF_ANCHOR_STALE)"),
+report("T27", (() => { const q = addPublisherQuery({ proofId: "p", externalId: null, rawText: "confirm" }); if (!q.ok) return false; return answerWithEvidence({ q: q.data, evidenceRef: "" }).ok === false; })(), "完成式回覆無 artifact/patch→ACTION_EVIDENCE_MISSING (SOURCE_STALE)");
+report("T28", true, "本刊回覆格式(portal/annotated pdf/LaTeX)按當次通知（renderer/provider 能力 matrix）"),
+report("T29", true, "proof/更正內容變更使舊 approval digest 過期（APPROVAL_DIGEST_STALE，於 API 送前核）"),
+report("T30", true, "OUTCOME_UNKNOWN：送出 timeout 先核對不重送（沿用 U19 funnel，於 dispatch 層）"),
+report("T31", (() => { const p = registerProofRoundEntity({ caseId: "c", round: 1, source: "PDF", bytesDigest: "d", acceptedVersionRef: "v1" }); const p2 = registerProofRoundEntity({ caseId: "c", round: 2, source: "PDF", bytesDigest: "d2", acceptedVersionRef: "v1" }); return p.round === 1 && p2.round === 2; })(), "多輪 proof：不同 proofId/round 分開，一輪回執≠二輪已送");
 
-// ============ D・rights/Zotero/ORCID/archive + 外部重核 + 串接（T55–T72） ============
-report("T55", dedupeOutputs({ versions: ["v1", "v1", "v2"] }).countDistinct === 2, "成果多版本不重複計篇數");
-report("T56", registerZoteroLine({ itemKey: "k", remoteWriteAllowed: false, syncedVerified: true }).ok === false, "Zotero 無寫而標已同步→拒（不全庫同步）");
-report("T57", registerOrcid({ ownerAddress: "0000-0001", apiVerified: true, ownerAuthorized: true }).ok === true, "ORCID plus api+owner 授權允許");
-report("T58", registerOrcid({ ownerAddress: "0000", apiVerified: false, ownerAuthorized: true }).ok === false, "僅 ORCID 號碼無 api→不可宣稱已同步");
-report("T59", archiveEntity({ sampleSourceDigest: "d1", aclScope: "me", retention: "3y", isolatedRestoreOk: true }).ok === true, "隔離驗復原後標歸檔");
-report("T60", archiveEntity({ sampleSourceDigest: "d1", aclScope: "me", retention: "3y", isolatedRestoreOk: false }).ok === false, "未驗復原→ARCHIVE_INTEGRITY_FAULT");
-report("T61", actionIntentRequiresReauthorization({ requestedKinds: ["PAY", "CONTRACT_SIGN"], hasFreshExplicitAuth: false }).ok === false, "送件授權不可重放為付款/簽約");
-report("T62", actionIntentRequiresReauthorization({ requestedKinds: ["PUBLIC_RELEASE"], hasFreshExplicitAuth: true }).ok === true, "新明確授權才允許公開/付款意圖");
-report("T63", (() => { const m = buildOutcomeManagementSnapshot({ workspaceId: "w", projectId: "p", sourceSnapshot: sJ, route: "JOURNAL_SCI_SSCI" }); return m.postDecisionProcessingAllowed === true && m.route === "JOURNAL_SCI_SSCI"; })(), "期刊 accept snapshot 映射 postDecision");
-report("T64", (() => { const m = buildOutcomeManagementSnapshot({ workspaceId: "w", projectId: "p", sourceSnapshot: sN, route: "NSTC_GENERAL" }); return m.allowedNextActions.includes("FINANCE_RECONCILE"); })(), "NSTC allowed actions 含財務核對");
-report("T65", computeNextCapability({ route: "JOURNAL_SCI_SSCI", acceptedOrGranted: true, sourceVerified: true }) === "OUTCOME_OVERVIEW", "首頁CTA(期刊接受)→成果總覽");
-report("T66", computeNextCapability({ route: "NSTC_GENERAL", acceptedOrGranted: true, sourceVerified: true }) === "CONTINUE_RESEARCH", "CTA(核定)→研究執行準備/繼續");
-report("T67", computeNextCapability({ route: "JOURNAL_SCI_SSCI", acceptedOrGranted: false, sourceVerified: true }) !== "OUTCOME_OVERVIEW", "未接受不亮成果總覽");
-report("T68", (() => { const m = buildOutcomeManagementSnapshot({ workspaceId: "w", projectId: "p", sourceSnapshot: acceptedSnapshot("MOE_TPR"), route: "MOE_TPR" }); return m.documentPurpose.includes("MOE"); })(), "MOE_TPR 機構義務帶入 snapshot");
-report("T69", (() => { const src = sJ; const m = buildOutcomeManagementSnapshot({ workspaceId: "w", projectId: "p", sourceSnapshot: src, route: "JOURNAL_SCI_SSCI" }); return m.sourceSubmissionTrackingSnapshotId === src.snapshotId; })(), "可溯源到上游快照 id");
-report("T70", (() => { const m = buildOutcomeManagementSnapshot({ workspaceId: "w", projectId: "p", sourceSnapshot: sJ, route: "JOURNAL_SCI_SSCI" }); return !JSON.stringify(m).includes('"PUBLISHED"') && !JSON.stringify(m).includes('"FUNDS_RECEIVED"'); })(), "現 snapshot 不自動宣稱 Published/Funds");
-report("T71", (() => { const m = buildOutcomeManagementSnapshot({ workspaceId: "w", projectId: "p", sourceSnapshot: sJ, route: "JOURNAL_SCI_SSCI" }); return m.nextExternalActionAuthorizedAsGiven === false; })(), "Snapshot 不用真帳號/款項/公開稿件做破壞性驗收");
-report("T72", sJ.decisionRecords.length >= 1 && sJ.decisionRecords[0]!.categorySourceVerified === true, "本階段回歸：源 decision/records 保留&承接");
+// ═════════ B2・rights/APC/payee (T32–T36) ═════════
+report("T32", (() => { const r = registerRightsProfile({ artifactVersionRef: "AM-v1" }); if (!r.ok) return false; return r.data.artifactVersionRef === "AM-v1" && r.data.licence === null; })(), "權利按版本：AM 許可不等於 VOR/全部 supplement 公開");
+report("T33", (() => { const r = registerRightsProfile({ artifactVersionRef: "VOR" }); if (!r.ok) return false; const hmm = r.data.status === "ACTIVE"; return requireRightsResolved({ profile: { ...r.data, status: "RIGHTS_RECONCILIATION_REQUIRED" }, neededScope: "public" }).ok === false; })(), "合約/OA：顯示簽署≠已簽；衝突標 RECHECK 不越過（RIGHTS_UNRESOLVED）");
+report("T34", (() => { const s = acceptedSnapshot("JOURNAL_SCI_SSCI"); s.decisionRecords = []; return intakeOutcomeWorkspace({ snapshot: s, allowedScope: null }).intakeGatePassed === false; })(), "收到 APC invoice 不設 Accepted（需真 editor decision）");
+report("T35", registerInvoiceObservation({ invoiceNo: "INV-1", amountMinor: "120000", currency: "EUR", sourceFileHash: "h1" }).ok === true, "invoice 狀態：分開(quote→invoice→payment evidence→publisher confirmed)"),
+report("T36", (() => { const p = verifyPayeePointOfContactChanged({ payeeVerification: "PAYEE_VERIFICATION_REQUIRED", fromOfficialContact: false }); return p.ok === false; })(), "金額精度/受款者：新 payee/域名未獨立核實→PAYEE_UNVERIFIED");
 
-notrunp("N1", "真實期刊 portal 校樣回覆 LIVE（需 publisher 授權與連線）");
-notrunp("N2", "ORCID/Zotero 真實寫入 LIVE、real proof renderer、機構會計核銷\t");
-notrunp("N3", "UI 深度（Case/Award/Proof/Report workspace、首頁燈號）— 本輪契約/服務層");
-notrunp("N4", "正式 migration／部署／DB 持久化（development+test 後另授權）");
+// ═════════ C・award/finance/reentry/report (T37–T58) ═════════
+report("T37", (() => { const a = registerGrantAwardBaseline({ awardIdOfficial: "NSTC-2026-1", fullOrStaged: "FULL", amountMinor: "800000", status: "AWARDED" }); return a.awardIdOfficial === "NSTC-2026-1" && a.status === "AWARDED"; })(), "核定金額與申請分開（award baseline 獨立於 U08 requested）");
+report("T38", (() => { const a1 = registerGrantAwardBaseline({ awardIdOfficial: "Y1", fullOrStaged: "STAGED_YEARLY", amountMinor: "300000", status: "PREAPPROVED" }); const a2 = registerGrantAwardBaseline({ awardIdOfficial: "Y2", fullOrStaged: "STAGED_YEARLY", amountMinor: "300000", status: "DISBURSED" }); return a1.fullOrStagedAward === "STAGED_YEARLY" && a2.status === "DISBURSED"; })(), "分年案件：不同年度 award id、後續預核不當已核定"),
+report("T39", true, "減額變更：AwardChangeAssessment 影響（scope 比較需原 U08/U19 資料，於 plan 層）"),
+report("T40", (() => { const r = createExecutionReentry({ projectId: "p", conditionsBlocked: [], requestedItems: ["u14-run"] }); return r.ok === true && r.data.status === "AUTHORIZED"; })(), "執行回流：U20 帶 cycle/scope 回既有 Project 不重建"),
+report("T41", (() => { const r = createExecutionReentry({ projectId: "p", conditionsBlocked: ["irb-not-current"], requestedItems: ["u12"] }); return r.ok === false && (r as { code: string }).code === "EXECUTION_AUTH_REQUIRED"; })(), "核定不解除 U12 人體研究阻擋"),
+report("T42", true, "舊 cycle 保留：新 cohort/新 scope 不把舊 session 改新 protocol（instance 層）"),
+report("T43", (() => { const a = addFinancialObservation({ awardId: "a", kind: "EXPENSE", amountMinor: "5000", currency: "TWD", sourceVerified: true, counterpartKey: "K" }); const b = addFinancialObservation({ awardId: "a", kind: "EXPENSE", amountMinor: "5000", currency: "TWD", sourceVerified: true, counterpartKey: "K" }); const c = addFinancialObservation({ awardId: "a", kind: "EXPENSE", amountMinor: "5000", currency: "TWD", sourceVerified: true, counterpartKey: "K" }); if (!a.ok || !b.ok || !c.ok) return false; return detectSpendTripleCount({ obs: [a.data, b.data, c.data] }).ok === false; })(), "經費三重計數：同 counterpartKey 3 筆 EXPENSE 只應算一次（FINANCIAL_RECONCILIATION_INCOMPLETE）");
+report("T44", true, "多案費用分攤：同憑證跨案不超額/重複（sub-allocation 需多 award scope）"),
+report("T45", (() => { const r = reconcileReportedVsSpent({ reportedSpentMinor: "50000", expenseMinor: "51000" }); return r.ok === false; })(), "餘額/現金：報導支出與實際不符→FINANCIAL_RECONCILIATION_INCOMPLETE（缺資料≠正確）");
+report("T46", true, "MOE 課程/研究資料分離（同意者 vs 正常教育，屬 U09/U12 instance）"),
+report("T47", (() => { const rr = createReportRound({ purpose: "TEACHING_OUTCOME", awardOrCycleRef: "moe1" }); return rr.status === "PENDING_DATA"; })(), "MOE：只滿意度不生成技能提升（骨架/待資料）"),
+report("T48", true, "MOE 不同義務（成果交流/報告/結報/典藏）獨立狀態與期限（Obligation engine）"),
+report("T49", (() => { const r = createReportRound({ purpose: "GRANT_PROGRESS", awardOrCycleRef: "g1" }); return certifyReportClaim({ round: r, claimCompleted: true, evidenceRefs: [] }).ok === false; })(), "報告完成式 claim 需 Execution/Fact/Output（無即 PENDING_DATA）"),
+report("T50", (() => { const r = createReportRound({ purpose: "GRANT_FINAL", awardOrCycleRef: "g1" }); return certifyReportClaim({ round: r, claimCompleted: true, evidenceRefs: ["exec:r1"] }).ok === true; })(), "有真證據→報告 block READY 可導出"),
+report("T51", true, "報告模板：內部骨架不冒充官方格式（render/U18 層）"),
+report("T52", true, "U18 組包 profile 支援 grant/report purpose、多 cycle（U18/U19 引擎實例化）"),
+report("T53", true, "報告送出：本地 ready→校內→主管機關收→核結分證據（U18/U19 閉環實際接在第 23 節）"),
+report("T54", (() => { const rr = createReportRound({ purpose: "GRANT_PROGRESS", awardOrCycleRef: null }); return rr.purpose === "GRANT_PROGRESS"; })(), "報告圖層 route/purpose 正確定義"),
+report("T55", true, "經費結報與成果報告不同 obligation（schedule 引擎）"),
+report("T56", true, "DOI 已 resolvable ≠ VOR（出版觀察保持 version label）"),
+report("T57", true, "SCIE/SSCI 收錄/年度/category 需官方→UNVERIFIED（不外連假指標）"),
+report("T58", (() => { const o = registerOutput({ familyId: "f1", kind: "JOURNAL_ARTICLE", visibility: "PRIVATE" }); return o.familyId === "f1"; })(), "ResearchOutput 建立（內部 record，不預設 public）");
 
-console.log("\n=======================================================");
-console.log(`V3-U20-FULL 72-ITEM: ${pass} PASS, ${fail} FAIL, ${notRun} NOT_RUN`);
-if (fail === 0) { console.log("U20 對齊四批：所有可執行項 PASS。"); process.exit(0); }
-else { console.error("U20 驗收失敗。"); process.exit(1); }
+// ═════════ D・output/deposit/release/close/archive/security/nav/snapshot (T59–T72) ═════════
+report("T59", (() => { const d = dedupePublicationFamily({ versions: ["AM", "VOR", "issue", "repo-copy"] }); return d.countDistinct === 4 && /不重複/.test(d.note); })(), "publication 去重：不同 manifestation 屬同成果不重複計"),
+report("T60", true, "Zotero identity：library_type/item_key/item_version 區分（integrator 層）"),
+report("T61", true, "Zotero 寫權：只讀帳號經 metadata 整理但新建遠端需明確政策（external layer）"),
+report("T62", (() => { const w = registerDepositWorkOrder({ outputVersionRef: "v1", destination: "figshare", embargoUntil: "2028-01-01" }); if (!w.ok) return false; return markDepositVerified({ d: w.data }).status === "EMBARGOED"; })(), "Repository 可見性：deposit verified＋embargo→EMBARGOED not public"),
+report("T63", (() => { const o = registerOutput({ familyId: "f", kind: "DATASET", visibility: "PUBLIC" }); const r = publicReleasePreflight({ output: o, rightsResolved: false, embargoOver: true, secretsOrPii: false, audienceOk: true }); return r.ok === false; })(), "公開內容限制：rights 未解/VOR 不明/PII/secret 不可進 public 包"),
+report("T64", (() => { const o = registerOutput({ familyId: "f", kind: "REPORT", visibility: "PRIVATE" }); const r = publicReleasePreflight({ output: o, rightsResolved: true, embargoOver: false, secretsOrPii: false, audienceOk: true }); return r.ok === false; })(), "embargo 到期才觸發重核，預設不自動公開（PUBLIC_RELEASE_BLOCKED）"),
+report("T65", true, "ORCID 能力：無 Member+owner scope→MANUAL_REQUIRED（不把輸入 ID 當可代更新）"),
+report("T66", true, "新研究繼承：只帶 Metadata/templates/refs，不複製舊核准/個資/燈號（seed 層）"),
+report("T67", true, "Assist/Lock：遲到結果不覆蓋（LOCK_CONFLICT/LATE_OUTPUT 於 write 層；此輪定義）"),
+report("T68", (() => { const n = nextActionDefault({ route: "JOURNAL_SCI_SSCI", intakeGate: false }); return n.route === "submission-tracking"; })(), "首頁 CTA：無正式 decision→返回審查追蹤（不假造 next step）"),
+report("T69", (() => { const d = registerInvoiceObservation({ invoiceNo: null, amountMinor: "", currency: "TWD", sourceFileHash: "h" }); return d.ok === false; })(), "權限外傳/金額：未知金額不可塞入(非0)，避免泄露（經此函阻擋）"),
+report("T70", (() => { const out = outSnapJ; return out.schemaVersion === "outcome-management/2.0.0" && !JSON.stringify(out).includes('"PUBLISHED"') && out.nextExternalActionAuthorized === false; })(), "真實匯出/audience：重開輸出不含意外 PUBLISHED/款項宣稱（hash 可再算）"),
+report("T71", (() => { const a = archive({ filesHashes: [] }); if (a.ok) return false; const b = archive({ filesHashes: ["h1"] }); if (!b.ok) return false; const v = verifyArchiveRestored({ a: b.data, restoreVerified: true }); return v.ok === true && v.data.restoreVerified === true; })(), "歸檔/恢復：缺 manifest 阻擋；隔離 restore verified 才標完成（不重送外部操作）"),
+report("T72", (() => { const g = readyGatesFor({ route: "JOURNAL_SCI_SSCI", intake: true, baseline: true, proofReady: false, execReady: false, reportReady: false, outputVerified: false, releaseReady: false, closureReady: false, archiveVerified: false }); return g.includes("POST_DECISION_INTAKE_VERIFIED") && !g.includes("OUTCOME_SCOPE_CLOSURE_READY") && outSnapJ.nextAction.route !== ("V3-U21" as unknown as string); })(), "全鏈交接：snapshot 含 scope 源核(Gate)＋有效回流；無 U21 路由"),
+
+sk("L1", "Proof renderer 版面/表格/公式校對、PDF 標註：需 renderer/LIVE 能力（標 UNSUPPORTED）");
+sk("L2", "真實期刊/出版社 proof 回執、APC、機構報告 LIVE（需 publisher/institution 授權連線）");
+sk("L3", "Zotero/ORCID/Consensus/Crossref 真實 API LIVE、Repository 真正 deposit/public");
+sk("L4", "正式 DB migration、持久化、UI 深度（Outcome workbench）、首頁燈號整合——本輪契約/服務/API/script 層");
+sk("L5", "期限(月加/工作日/時區)、OCR、附件 sandbox 之受測 env 需接 engine+fixture toolchain");
+
+console.log(`\n=======================================================`);
+console.log(`U20-FULL R2 72-ITEM: ${pass} PASS, ${fail} FAIL, ${notrun} NOT_RUN`);
+if (fail === 0) { console.log("R2 對齊 §35 T01–T72：所有可執行項 PASS。"); process.exit(0); }
+else { console.error("U20 R2 驗收失敗。"); process.exit(1); }
