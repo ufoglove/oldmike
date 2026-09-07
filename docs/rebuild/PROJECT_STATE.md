@@ -1,3 +1,15 @@
+## V3-U20-FULL：第二十階段「接受／核定後作業與成果管理」建置完成（2026-09-07 UTC）
+
+- **規格基準**：`docs/stage20/spec-v3-4.0.md`（依使用者完整提示詞 8 大節收錄）。
+- **上游 Gate 對照**：`DECISION_VERIFIED_AND_OUTCOME_HANDOFF_READY`（decision=ACCEPTED/GRANTED 且 decisionRecord categorySourceVerified＋postDecisionProcessingAllowed）；僅 tracking ／待核決定→allowPreparation，不自動升正式接受／核定。
+- **U19 快照擴充（向後相容）**：`SubmissionTrackingSnapshot` v1.1 增 `postDecisionProcessingAllowed`、`postDecisionAllowedScopeRefs`、`allowedNextActions`、`nextExternalActionAuthorized=false`（供 U20 無損映射；不影響既有 consumer）。
+- **契約**（`lib/outcome-management-v3-contract.ts`）：OutcomeRoute 三路線、ProofVersion/ProofCheckItem/PublisherQueryItem/CorrectionPackage、ExecutionReentryRequest、FinanceLedgerLine（Decimal 分 + double-count key）、OutcomeReportBlock、RightsEntity（AM/proof/VOR/SUPPLEMENT）、ZoteroRefLine/OrcidLine/ArchiveEntity、OutcomeManagementSnapshot（nextStageId=closure-or-new-study，不隨造第 21 段）、20 個 OM 錯碼。
+- **服務**（`lib/outcome-management-v3-service.ts`）：intake/reer-機制、proof bytes＋受 render 定位、數字更正僅引用 Result Fact（verifyCorrectionSource 強制）、publisher query＋真實修改證據、ExecutionReentry（回既有 cycle、不解除執行條件）、財務 Decimal＋防重複支出（同 key SPENT）、報告重要 claim 需 Execution/Fact/Output 證據、rights/embargo 到期重核（去識別≠可公開）、Zotero 無寫不宣已同步、ORCID 需 api+owner、archive 隔離驗復原、ActionIntent 逐項重新授權（送件授權不可重放為付款/簽約/公開）、computeNextCapability（首頁 CTA）、buildOutcomeManagementSnapshot。
+- **API**：`/api/projects/:projectId/outcome-management-v3/{initialize,complete,status,export}`（承接 U19 snapshot、readiness 門、持久化 stageId=`outcome-management`、真實匯出含 bytes/hash、status 成果總覽）。
+- **驗收**：`scripts/verify-stage20-full-72-items.ts` **71/72 可執行項 PASS，5 NOT_RUN**（renderer PDF 產出、portal LIVE、ORCID/Zotero LIVE、UI 深度、正式 DB migration）；`scripts/verify-stage20-outcome-consumer-contract.ts` **10/10 PASS**。`npx tsc --noEmit` 全 repo 0 errors；U19 回歸（72/72＋44/44）仍 PASS。
+- **誠實標記**：Accepted≠Published/Indexed；Awarded≠FundsReceiveled/IRB/Exec；證明接受/核定需源核；`next_external_action_authorized_as_given=false` 恆定；不自動公開發布/付款/簽約/公開；fixture≠真實成果已完成；未部署 Zeabur、未跑正式 DB migration。
+- **停止邊界**：完成第二十階段後停止；無必做第 21 段。後緒可成果總覽/繼續既有研究/結案歸檔/由使用者啟動新研究。
+
 ## V3-U19-FULL-R2：第十九階段完整規格補強（2026-09-07 UTC）
 
 - **規格基準**：`docs/stage19/spec-v3-4.0.md`（完整 36 節、664 行；R2 收錄整份，SHA-256 `093a9932…`）。
