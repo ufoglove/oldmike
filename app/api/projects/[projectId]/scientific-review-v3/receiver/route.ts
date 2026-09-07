@@ -9,7 +9,7 @@ import {
 } from "@/lib/scientific-review-v3-service";
 import { type ScientificReviewSnapshot, type ScientificFinding } from "@/lib/scientific-review-v3-contract";
 
-export const SCIENTIFIC_REVIEW_V3_RECEIVER_CONTRACT_VERSION =
+const SCIENTIFIC_REVIEW_V3_RECEIVER_CONTRACT_VERSION =
   "scientific-review-v3-receiver/1.0.0" as const;
 
 /**

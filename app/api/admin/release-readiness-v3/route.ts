@@ -10,7 +10,7 @@ import {
   buildReleaseReadinessSnapshot,
 } from "@/lib/release-readiness-v3-service";
 
-export const RELEASE_READINESS_V3_API_VERSION = "release-readiness-v3/1.0.0" as const;
+const RELEASE_READINESS_V3_API_VERSION = "release-readiness-v3/1.0.0" as const;
 
 /**
  * GET /api/admin/release-readiness-v3

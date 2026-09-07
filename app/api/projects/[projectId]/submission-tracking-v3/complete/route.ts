@@ -12,7 +12,7 @@ import {
 import { type SubmissionWorkOrder, type ExternalAttempt, type SubmissionEvent, type ReceiptVerification, type ExternalReview, type UpstreamRevisionRef } from "@/lib/submission-tracking-v3-contract";
 import { type FinalSubmissionPackageSnapshot } from "@/lib/final-submission-v3-contract";
 
-export const SUBMISSION_TRACKING_V3_COMPLETE_CONTRACT_VERSION =
+const SUBMISSION_TRACKING_V3_COMPLETE_CONTRACT_VERSION =
   "submission-tracking-v3-complete/1.0.0" as const;
 
 /**

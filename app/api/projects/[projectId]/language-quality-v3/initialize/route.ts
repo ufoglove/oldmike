@@ -15,7 +15,7 @@ import {
 } from "@/lib/language-quality-v3-service";
 import { type ScientificReviewSnapshot } from "@/lib/scientific-review-v3-contract";
 
-export const LANGUAGE_QUALITY_V3_INITIALIZE_CONTRACT_VERSION =
+const LANGUAGE_QUALITY_V3_INITIALIZE_CONTRACT_VERSION =
   "language-quality-v3-initialize/1.0.0" as const;
 
 /**

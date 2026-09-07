@@ -9,7 +9,7 @@ import {
 import { type GapReviewWorkspace } from "@/lib/gap-novelty-v3-contract";
 import { type BlueprintPlanningSnapshot } from "@/lib/blueprint-planning-contract";
 
-export const GAP_COMPLETE_CONTRACT_VERSION = "gap-complete/1.0.0" as const;
+const GAP_COMPLETE_CONTRACT_VERSION = "gap-complete/1.0.0" as const;
 
 /**
  * POST /api/projects/:projectId/gap-novelty/complete

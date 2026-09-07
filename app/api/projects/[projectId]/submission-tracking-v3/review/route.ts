@@ -12,7 +12,7 @@ import {
 } from "@/lib/submission-tracking-v3-service";
 import { type ExternalReview } from "@/lib/submission-tracking-v3-contract";
 
-export const SUBMISSION_TRACKING_V3_REVIEW_CONTRACT_VERSION =
+const SUBMISSION_TRACKING_V3_REVIEW_CONTRACT_VERSION =
   "submission-tracking-v3-review/1.0.0" as const;
 
 /**

@@ -13,7 +13,7 @@ import {
 } from "@/lib/final-submission-v3-service";
 import { type LanguageQualitySnapshot } from "@/lib/language-quality-v3-contract";
 
-export const FINAL_SUBMISSION_V3_INITIALIZE_CONTRACT_VERSION =
+const FINAL_SUBMISSION_V3_INITIALIZE_CONTRACT_VERSION =
   "final-submission-v3-initialize/1.0.0" as const;
 
 /**

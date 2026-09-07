@@ -13,7 +13,7 @@ import {
 import { type ManuscriptWorkspace } from "@/lib/manuscript-writing-contract";
 import { type AnalysisResultsSnapshot } from "@/lib/analysis-execution-contract";
 
-export const MANUSCRIPT_WRITING_COMPLETE_CONTRACT_VERSION =
+const MANUSCRIPT_WRITING_COMPLETE_CONTRACT_VERSION =
   "manuscript-writing-complete/1.0.0" as const;
 
 /**

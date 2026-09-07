@@ -8,7 +8,7 @@ import {
 } from "@/lib/gap-novelty-v3-service";
 import { type BlueprintPlanningSnapshot } from "@/lib/blueprint-planning-contract";
 
-export const GAP_INITIALIZE_CONTRACT_VERSION = "gap-initialize/1.0.0" as const;
+const GAP_INITIALIZE_CONTRACT_VERSION = "gap-initialize/1.0.0" as const;
 
 /**
  * POST /api/projects/:projectId/gap-novelty/initialize

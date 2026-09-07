@@ -10,7 +10,7 @@ import {
   type UpstreamReviewRequest,
 } from "@/lib/scientific-review-v3-contract";
 
-export const SCIENTIFIC_REVIEW_V3_FINDINGS_CONTRACT_VERSION =
+const SCIENTIFIC_REVIEW_V3_FINDINGS_CONTRACT_VERSION =
   "scientific-review-v3-findings/1.0.0" as const;
 
 /**

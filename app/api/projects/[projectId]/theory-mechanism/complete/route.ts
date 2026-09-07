@@ -9,7 +9,7 @@ import {
 import { type TheoryWorkspace } from "@/lib/theory-mechanism-v3-contract";
 import { type GapEvidenceSnapshot } from "@/lib/gap-novelty-v3-contract";
 
-export const THEORY_COMPLETE_CONTRACT_VERSION = "theory-complete/1.0.0" as const;
+const THEORY_COMPLETE_CONTRACT_VERSION = "theory-complete/1.0.0" as const;
 
 /**
  * POST /api/projects/:projectId/theory-mechanism/complete

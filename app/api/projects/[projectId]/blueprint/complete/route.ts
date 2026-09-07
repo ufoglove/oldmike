@@ -8,7 +8,7 @@ import {
 } from "@/lib/blueprint-builder-service";
 import { type BlueprintWorkspace } from "@/lib/blueprint-planning-contract";
 
-export const BLUEPRINT_COMPLETE_CONTRACT_VERSION = "blueprint-complete/1.0.0" as const;
+const BLUEPRINT_COMPLETE_CONTRACT_VERSION = "blueprint-complete/1.0.0" as const;
 
 /**
  * POST /api/projects/:projectId/blueprint/complete

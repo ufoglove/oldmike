@@ -9,7 +9,7 @@ import {
 } from "@/lib/manuscript-writing-service";
 import { type AnalysisResultsSnapshot } from "@/lib/analysis-execution-contract";
 
-export const MANUSCRIPT_WRITING_INITIALIZE_CONTRACT_VERSION =
+const MANUSCRIPT_WRITING_INITIALIZE_CONTRACT_VERSION =
   "manuscript-writing-initialize/1.0.0" as const;
 
 /**

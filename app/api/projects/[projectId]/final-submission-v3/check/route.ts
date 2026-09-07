@@ -10,7 +10,7 @@ import {
   rendererCapabilities,
 } from "@/lib/final-submission-v3-service";
 
-export const FINAL_SUBMISSION_V3_CHECK_CONTRACT_VERSION =
+const FINAL_SUBMISSION_V3_CHECK_CONTRACT_VERSION =
   "final-submission-v3-check/1.0.0" as const;
 
 /**

@@ -5,7 +5,7 @@ import { ResearchStorageUnavailable, resolveResearchTenant } from "@/lib/researc
 import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { addSubmissionEvent, verifyReceipt } from "@/lib/submission-tracking-v3-service";
 
-export const SUBMISSION_TRACKING_V3_EVENTS_CONTRACT_VERSION =
+const SUBMISSION_TRACKING_V3_EVENTS_CONTRACT_VERSION =
   "submission-tracking-v3-events/1.0.0" as const;
 
 /**

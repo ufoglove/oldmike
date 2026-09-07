@@ -6,7 +6,7 @@ import { ResearchStorageUnavailable, resolveResearchTenant } from "@/lib/researc
 import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { type ScientificReviewSnapshot } from "@/lib/scientific-review-v3-contract";
 
-export const SCIENTIFIC_REVIEW_V3_EXPORT_CONTRACT_VERSION =
+const SCIENTIFIC_REVIEW_V3_EXPORT_CONTRACT_VERSION =
   "scientific-review-v3-export/1.0.0" as const;
 
 const SUPPORTED = new Set(["json", "findings-manifest", "meaning-constraints", "qa-report", "markdown"]);

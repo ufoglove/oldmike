@@ -11,7 +11,7 @@ import {
 import { type ManuscriptWritingSnapshot } from "@/lib/manuscript-writing-contract";
 import { type AnalysisResultsSnapshot } from "@/lib/analysis-execution-contract";
 
-export const STAGE16_RECEIVER_CONTRACT_VERSION =
+const STAGE16_RECEIVER_CONTRACT_VERSION =
   "stage16-receiver/1.0.0" as const;
 
 /**

@@ -6,7 +6,7 @@ import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { decideReReview } from "@/lib/scientific-review-v3-service";
 import { type ScientificFinding } from "@/lib/scientific-review-v3-contract";
 
-export const SCIENTIFIC_REVIEW_V3_REREVIEW_CONTRACT_VERSION =
+const SCIENTIFIC_REVIEW_V3_REREVIEW_CONTRACT_VERSION =
   "scientific-review-v3-rereview/1.0.0" as const;
 
 /**

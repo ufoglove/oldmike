@@ -8,7 +8,7 @@ import {
 } from "@/lib/study-design-planning-service";
 import { type TheoryMechanismSnapshot } from "@/lib/theory-mechanism-v3-contract";
 
-export const STUDY_DESIGN_INITIALIZE_CONTRACT_VERSION = "study-design-initialize/1.0.0" as const;
+const STUDY_DESIGN_INITIALIZE_CONTRACT_VERSION = "study-design-initialize/1.0.0" as const;
 
 /**
  * POST /api/projects/:projectId/study-design/initialize

@@ -6,7 +6,7 @@ import { ResearchStorageUnavailable, resolveResearchTenant } from "@/lib/researc
 import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { type SubmissionTrackingSnapshot } from "@/lib/submission-tracking-v3-contract";
 
-export const SUBMISSION_TRACKING_V3_EXPORT_CONTRACT_VERSION =
+const SUBMISSION_TRACKING_V3_EXPORT_CONTRACT_VERSION =
   "submission-tracking-v3-export/1.0.0" as const;
 
 const SUPPORTED = new Set(["json", "timeline", "response-matrix", "qa-report", "markdown"]);
