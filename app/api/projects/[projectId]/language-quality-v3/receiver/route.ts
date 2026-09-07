@@ -9,7 +9,7 @@ import {
 } from "@/lib/language-quality-v3-service";
 import { type LanguageQualitySnapshot } from "@/lib/language-quality-v3-contract";
 
-export const LANGUAGE_QUALITY_V3_RECEIVER_CONTRACT_VERSION =
+const LANGUAGE_QUALITY_V3_RECEIVER_CONTRACT_VERSION =
   "language-quality-v3-receiver/1.0.0" as const;
 
 /**

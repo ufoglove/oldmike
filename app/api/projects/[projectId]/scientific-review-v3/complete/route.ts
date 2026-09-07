@@ -20,7 +20,7 @@ import {
 } from "@/lib/scientific-review-v3-contract";
 import { type ManuscriptWritingSnapshot } from "@/lib/manuscript-writing-contract";
 
-export const SCIENTIFIC_REVIEW_V3_COMPLETE_CONTRACT_VERSION =
+const SCIENTIFIC_REVIEW_V3_COMPLETE_CONTRACT_VERSION =
   "scientific-review-v3-complete/1.0.0" as const;
 
 /**

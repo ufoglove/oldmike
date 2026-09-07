@@ -13,7 +13,7 @@ import {
 import { type SubmissionTrackingSnapshot } from "@/lib/submission-tracking-v3-contract";
 import { type OutcomeStageFlags, type OutcomeRoute, type OutcomeGate } from "@/lib/outcome-management-v3-contract";
 
-export const OUTCOME_MANAGEMENT_V3_COMPLETE_CONTRACT_VERSION = "outcome-management-v3-complete/1.0.0" as const;
+const OUTCOME_MANAGEMENT_V3_COMPLETE_CONTRACT_VERSION = "outcome-management-v3-complete/1.0.0" as const;
 
 /** POST /api/projects/:projectId/outcome-management-v3/complete
  * 承接 U19 → 建立 OutcomeManagementSnapshot（stageId=outcome-management）並持久化。 */

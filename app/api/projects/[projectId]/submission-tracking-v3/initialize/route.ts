@@ -7,7 +7,7 @@ import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { buildSubmissionWorkspaceFromStage18 } from "@/lib/submission-tracking-v3-service";
 import { type FinalSubmissionPackageSnapshot } from "@/lib/final-submission-v3-contract";
 
-export const SUBMISSION_TRACKING_V3_INITIALIZE_CONTRACT_VERSION =
+const SUBMISSION_TRACKING_V3_INITIALIZE_CONTRACT_VERSION =
   "submission-tracking-v3-initialize/1.0.0" as const;
 
 /**

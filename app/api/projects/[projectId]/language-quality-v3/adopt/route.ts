@@ -6,7 +6,7 @@ import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { runFidelityChecks } from "@/lib/language-quality-v3-service";
 import type { LanguageWorkOrder } from "@/lib/language-quality-v3-contract";
 
-export const LANGUAGE_QUALITY_V3_ADOPT_CONTRACT_VERSION =
+const LANGUAGE_QUALITY_V3_ADOPT_CONTRACT_VERSION =
   "language-quality-v3-adopt/1.0.0" as const;
 
 /**

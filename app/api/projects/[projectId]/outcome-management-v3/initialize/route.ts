@@ -7,7 +7,7 @@ import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { intakeOutcomeWorkspace } from "@/lib/outcome-management-v3-service";
 import { type SubmissionTrackingSnapshot } from "@/lib/submission-tracking-v3-contract";
 
-export const OUTCOME_MANAGEMENT_V3_INITIALIZE_CONTRACT_VERSION = "outcome-management-v3-initialize/1.0.0" as const;
+const OUTCOME_MANAGEMENT_V3_INITIALIZE_CONTRACT_VERSION = "outcome-management-v3-initialize/1.0.0" as const;
 
 /** POST /api/projects/:projectId/outcome-management-v3/initialize
  * 承接 U19 SubmissionTrackingSnapshot；Gate DECISION_VERIFIED_AND_OUTCOME_HANDOFF_READY。

@@ -7,7 +7,7 @@ import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { buildStage19ReceiverState } from "@/lib/final-submission-v3-service";
 import { type FinalSubmissionPackageSnapshot } from "@/lib/final-submission-v3-contract";
 
-export const FINAL_SUBMISSION_V3_RECEIVER_CONTRACT_VERSION =
+const FINAL_SUBMISSION_V3_RECEIVER_CONTRACT_VERSION =
   "final-submission-v3-receiver/1.0.0" as const;
 
 /**

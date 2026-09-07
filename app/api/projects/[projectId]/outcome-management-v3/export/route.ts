@@ -6,7 +6,7 @@ import { StageOperationRepository } from "@/lib/stage-operation-repository";
 import { ResearchStorageUnavailable, resolveResearchTenant } from "@/lib/research-repository";
 import { requireAuthenticatedUser } from "@/lib/request-auth";
 
-export const OUTCOME_MANAGEMENT_V3_EXPORT_CONTRACT_VERSION = "outcome-management-v3-export/1.0.0" as const;
+const OUTCOME_MANAGEMENT_V3_EXPORT_CONTRACT_VERSION = "outcome-management-v3-export/1.0.0" as const;
 
 /** GET /api/projects/:projectId/outcome-management-v3/export?format=json|markdown */
 export async function GET(request: NextRequest, context: { params: Promise<{ projectId: string }> }) {

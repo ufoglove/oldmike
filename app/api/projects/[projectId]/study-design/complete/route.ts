@@ -9,7 +9,7 @@ import {
 import { type StudyDesignWorkspace } from "@/lib/study-design-planning-contract";
 import { type TheoryMechanismSnapshot } from "@/lib/theory-mechanism-v3-contract";
 
-export const STUDY_DESIGN_COMPLETE_CONTRACT_VERSION = "study-design-complete/1.0.0" as const;
+const STUDY_DESIGN_COMPLETE_CONTRACT_VERSION = "study-design-complete/1.0.0" as const;
 
 /**
  * POST /api/projects/:projectId/study-design/complete

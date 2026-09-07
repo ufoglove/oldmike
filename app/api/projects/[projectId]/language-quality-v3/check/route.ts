@@ -10,7 +10,7 @@ import {
 } from "@/lib/language-quality-v3-service";
 import { type LanguageWorkOrder, type TermBinding } from "@/lib/language-quality-v3-contract";
 
-export const LANGUAGE_QUALITY_V3_CHECK_CONTRACT_VERSION =
+const LANGUAGE_QUALITY_V3_CHECK_CONTRACT_VERSION =
   "language-quality-v3-check/1.0.0" as const;
 
 /**

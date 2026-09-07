@@ -21,7 +21,7 @@ import {
 } from "@/lib/language-quality-v3-contract";
 import { type ScientificReviewSnapshot } from "@/lib/scientific-review-v3-contract";
 
-export const LANGUAGE_QUALITY_V3_COMPLETE_CONTRACT_VERSION =
+const LANGUAGE_QUALITY_V3_COMPLETE_CONTRACT_VERSION =
   "language-quality-v3-complete/1.0.0" as const;
 
 /**

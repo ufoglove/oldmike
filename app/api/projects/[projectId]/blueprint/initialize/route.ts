@@ -8,7 +8,7 @@ import {
 } from "@/lib/blueprint-builder-service";
 import { type SubmissionNavigationSnapshot } from "@/lib/submission-navigation-engines-contract";
 
-export const BLUEPRINT_INITIALIZE_CONTRACT_VERSION = "blueprint-initialize/1.0.0" as const;
+const BLUEPRINT_INITIALIZE_CONTRACT_VERSION = "blueprint-initialize/1.0.0" as const;
 
 /**
  * POST /api/projects/:projectId/blueprint/initialize

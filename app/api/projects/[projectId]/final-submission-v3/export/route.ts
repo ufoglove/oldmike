@@ -6,7 +6,7 @@ import { ResearchStorageUnavailable, resolveResearchTenant } from "@/lib/researc
 import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { type FinalSubmissionPackageSnapshot } from "@/lib/final-submission-v3-contract";
 
-export const FINAL_SUBMISSION_V3_EXPORT_CONTRACT_VERSION =
+const FINAL_SUBMISSION_V3_EXPORT_CONTRACT_VERSION =
   "final-submission-v3-export/1.0.0" as const;
 
 const SUPPORTED = new Set(["json", "package-manifest", "approval-subjects", "qa-report", "markdown"]);

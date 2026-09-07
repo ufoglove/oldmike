@@ -5,7 +5,7 @@ import { ResearchStorageUnavailable, resolveResearchTenant } from "@/lib/researc
 import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { type ScientificFinding } from "@/lib/scientific-review-v3-contract";
 
-export const SCIENTIFIC_REVIEW_V3_RESPOND_CONTRACT_VERSION =
+const SCIENTIFIC_REVIEW_V3_RESPOND_CONTRACT_VERSION =
   "scientific-review-v3-respond/1.0.0" as const;
 
 /**

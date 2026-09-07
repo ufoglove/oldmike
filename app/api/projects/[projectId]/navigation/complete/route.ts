@@ -12,7 +12,7 @@ import {
 } from "@/lib/submission-navigation-engines-contract";
 import { type FundingIntent, type PublicationIntent, type SubmissionFingerprintVersion } from "@/lib/submission-fingerprint-contract";
 
-export const NAVIGATION_COMPLETE_CONTRACT_VERSION = "navigation-complete/1.0.0" as const;
+const NAVIGATION_COMPLETE_CONTRACT_VERSION = "navigation-complete/1.0.0" as const;
 
 /**
  * POST /api/projects/:id/navigation/complete

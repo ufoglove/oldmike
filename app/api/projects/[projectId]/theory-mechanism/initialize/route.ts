@@ -8,7 +8,7 @@ import {
 } from "@/lib/theory-mechanism-v3-service";
 import { type GapEvidenceSnapshot } from "@/lib/gap-novelty-v3-contract";
 
-export const THEORY_INITIALIZE_CONTRACT_VERSION = "theory-initialize/1.0.0" as const;
+const THEORY_INITIALIZE_CONTRACT_VERSION = "theory-initialize/1.0.0" as const;
 
 /**
  * POST /api/projects/:projectId/theory-mechanism/initialize

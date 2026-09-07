@@ -13,7 +13,7 @@ import {
 } from "@/lib/production-launch-v3-contract";
 import { buildReleaseReadinessSnapshot, createReleaseScopeManifest } from "@/lib/release-readiness-v3-service";
 
-export const PRODUCTION_LAUNCH_V3_API_VERSION = "production-launch-v3/1.0.0" as const;
+const PRODUCTION_LAUNCH_V3_API_VERSION = "production-launch-v3/1.0.0" as const;
 
 /**
  * GET /api/admin/production-launch-v3

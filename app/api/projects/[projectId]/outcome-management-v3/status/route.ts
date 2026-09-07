@@ -6,7 +6,7 @@ import { ResearchStorageUnavailable, resolveResearchTenant } from "@/lib/researc
 import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { type OutcomeManagementSnapshot } from "@/lib/outcome-management-v3-contract";
 
-export const OUTCOME_MANAGEMENT_V3_STATUS_CONTRACT_VERSION = "outcome-management-v3-status/1.0.0" as const;
+const OUTCOME_MANAGEMENT_V3_STATUS_CONTRACT_VERSION = "outcome-management-v3-status/1.0.0" as const;
 
 /** GET /api/projects/:projectId/outcome-management-v3/status */
 export async function GET(request: NextRequest, context: { params: Promise<{ projectId: string }> }) {

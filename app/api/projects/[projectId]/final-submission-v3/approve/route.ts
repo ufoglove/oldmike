@@ -9,7 +9,7 @@ import {
 } from "@/lib/final-submission-v3-service";
 import { type PackageDocument } from "@/lib/final-submission-v3-contract";
 
-export const FINAL_SUBMISSION_V3_APPROVE_CONTRACT_VERSION =
+const FINAL_SUBMISSION_V3_APPROVE_CONTRACT_VERSION =
   "final-submission-v3-approve/1.0.0" as const;
 
 /**

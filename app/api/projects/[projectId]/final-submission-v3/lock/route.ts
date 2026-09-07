@@ -6,7 +6,7 @@ import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { confirmFreezeAndLock } from "@/lib/final-submission-v3-service";
 import { type PackageDocument } from "@/lib/final-submission-v3-contract";
 
-export const FINAL_SUBMISSION_V3_LOCK_CONTRACT_VERSION =
+const FINAL_SUBMISSION_V3_LOCK_CONTRACT_VERSION =
   "final-submission-v3-lock/1.0.0" as const;
 
 /**

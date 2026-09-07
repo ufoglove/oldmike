@@ -6,7 +6,7 @@ import { ResearchStorageUnavailable, resolveResearchTenant } from "@/lib/researc
 import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { type LanguageQualitySnapshot } from "@/lib/language-quality-v3-contract";
 
-export const LANGUAGE_QUALITY_V3_EXPORT_CONTRACT_VERSION =
+const LANGUAGE_QUALITY_V3_EXPORT_CONTRACT_VERSION =
   "language-quality-v3-export/1.0.0" as const;
 
 const SUPPORTED = new Set(["json", "fidelity-report", "qa-report", "alignment", "markdown"]);

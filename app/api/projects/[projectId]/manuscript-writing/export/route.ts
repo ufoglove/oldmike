@@ -6,7 +6,7 @@ import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { StageOperationRepository } from "@/lib/stage-operation-repository";
 import { type ManuscriptWritingSnapshot } from "@/lib/manuscript-writing-contract";
 
-export const MANUSCRIPT_WRITING_EXPORT_CONTRACT_VERSION =
+const MANUSCRIPT_WRITING_EXPORT_CONTRACT_VERSION =
   "manuscript-writing-export/1.0.0" as const;
 
 const text = (v: unknown): string => (typeof v === "string" ? v : "");

@@ -12,7 +12,7 @@ import {
 } from "@/lib/research-goal-registry";
 import { type TopicSelectionSnapshot } from "@/lib/stage-operation-contracts";
 
-export const NAVIGATION_INIT_CONTRACT_VERSION = "navigation-init/1.0.0" as const;
+const NAVIGATION_INIT_CONTRACT_VERSION = "navigation-init/1.0.0" as const;
 
 /**
  * POST /api/projects/:id/navigation/initialize

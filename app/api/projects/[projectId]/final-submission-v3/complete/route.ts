@@ -19,7 +19,7 @@ import {
 import { type PackageDocument, type AuthorApprovalRecord } from "@/lib/final-submission-v3-contract";
 import { type LanguageQualitySnapshot } from "@/lib/language-quality-v3-contract";
 
-export const FINAL_SUBMISSION_V3_COMPLETE_CONTRACT_VERSION =
+const FINAL_SUBMISSION_V3_COMPLETE_CONTRACT_VERSION =
   "final-submission-v3-complete/1.0.0" as const;
 
 /**

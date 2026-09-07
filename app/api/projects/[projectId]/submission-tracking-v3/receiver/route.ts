@@ -7,7 +7,7 @@ import { requireAuthenticatedUser } from "@/lib/request-auth";
 import { buildStage20ReceiverState } from "@/lib/submission-tracking-v3-service";
 import { type SubmissionTrackingSnapshot } from "@/lib/submission-tracking-v3-contract";
 
-export const SUBMISSION_TRACKING_V3_RECEIVER_CONTRACT_VERSION =
+const SUBMISSION_TRACKING_V3_RECEIVER_CONTRACT_VERSION =
   "submission-tracking-v3-receiver/1.0.0" as const;
 
 /**
