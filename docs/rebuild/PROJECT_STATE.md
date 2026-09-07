@@ -1,3 +1,23 @@
+## V3-R01-FULL：全站整合驗收與正式上線準備（2026-09-07 UTC）
+
+- **任務定位**：V3-R01 為工程整合驗收與發布準備，非科研必經第 21 階段；不計入研究進度分母，不變更研究資料，不重放未授權之外部副作用。
+- **規格基準**：`docs/release/V3-R01/spec-v3-4.0.md`（官方 32 節規格檔，SHA-256 `fc6e857f…`，逐字一致）。
+- **工程發布門禁**（`RELEASE_ENGINEERING_GATES`）：
+  * `INTEGRATION_INVENTORY_VERIFIED`：全站 U01～U20 契約、資料模型、三目標與 Provider 盤點完成。
+  * `CORE_WORKFLOWS_INTEGRATION_ACCEPTED`：無未解 P0/P1 阻塞；前瞻計畫不卡未來結果，回流不重置全站。
+  * `SECURITY_RECOVERY_AND_OUTPUT_ACCEPTED`：權限隔離、不可信輸入防注入、冷備份與隔離還原演練驗證。
+  * `RELEASE_CANDIDATE_READY_AWAITING_OWNER_APPROVAL`：發布候選版已封裝鎖定，停於此處等待平台 Owner 正式部署授權。
+- **契約與模型**（`lib/release-readiness-v3-contract.ts`、`lib/release-readiness-v3-service.ts`）：
+  * `ReleaseScopeManifest`：納管三目標支援（`JOURNAL_SCI_SSCI`、`NSTC_GENERAL`、`MOE_TPR`）、核心能力清單與排除項。
+  * `ReleaseReadinessSnapshot`：schema v3.4.0，固定 commitSha、tree/image digest、環境識別、Gate 評估；`productionDeploymentAuthorized`、`researchStateMutationAuthorized`、`nextExternalActionAuthorized` 恆為 false。
+- **管理端 API**：`/api/admin/release-readiness-v3`（支援 GET 評估狀態與 POST 建立 ReleaseReadinessSnapshot）。
+- **驗收證據（附錄A R01-T001～R01-T080）**：
+  * `scripts/verify-stage-r01-full-80-items.ts`：**78 PASS, 0 FAIL, 2 NOT_RUN**（R01-T058 真實 PDF/DOCX renderer 工具鏈、R01-T061 Playwright 實機 E2E 環境，誠實標示）。
+  * `npx tsc --noEmit`：0 errors。
+  * 歷史迴歸：U19（72/72）、U20（72/72）、U20 Consumer（14/14）全數維持 PASS。
+- **誠實界線**：staging 候選版已就緒；未經明確授權不切換生產流量、不執行正式 DB migration、不發起外部真實投稿或付款。
+- **停止邊界**：達到 `RELEASE_CANDIDATE_READY_AWAITING_OWNER_APPROVAL`，停止並等待發布指示。
+
 ## V3-U20-FULL-R2：第二十階段完整規格補強（官方 36 節）建置完成（2026-09-07 UTC）
 
 - **規格基準**：`docs/stage20/spec-v3-4.0.md`（官方 36 節版 626 行；SHA-256 `d056eade…`，與使用者附檔逐字一致）。
