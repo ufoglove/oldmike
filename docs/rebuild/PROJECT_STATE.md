@@ -1,3 +1,19 @@
+## V3-U19-FULL-R2：第十九階段完整規格補強（2026-09-07 UTC）
+
+- **規格基準**：`docs/stage19/spec-v3-4.0.md`（完整 36 節、664 行；R2 收錄整份，SHA-256 `093a9932…`）。
+- **契約補強**（`lib/submission-tracking-v3-contract.ts` → v1.1.0）：
+  * §4 SubmissionCase（publicationFamilyId、外部 ID 唯一性 scope、IMPORTED_EXISTING_CASE）/ DestinationLegKind / SubmissionRoundKind（同稿新 Round 非二次初投）。
+  * §3/§5 ProviderCapability 8 項＋三模式 GUIDED_MANUAL/READ_ONLY_SYNC/AUTHORIZED_WRITE。
+  * §6 ActionIntent（actor/operation/packageDigest/聲明/validUntil/singleUse）＋ExecutionAuthorizationEvent（scopeDigest）。
+  * §8 Attempt 狀態機（DRAFT_INTENT…CONFIRMED＋OUTCOME_UNKNOWN/RECONCILIATION_REQUIRED）＋attemptIdempotencyKey。
+  * §10 EvidenceTier 7-tier（USER_REPORTED…UNVERIFIED）＋Receipt idStatus(ID_PENDING)。
+  * §11 SubmissionEvent（effectiveAt/providerSequence/normalizedLabel）＋StatusProjection；§16 DecisionCategory 12＋DecisionRecord；§18 ReviewResponseWorkOrder＋responseKind；§30 規格 20 錯誤碼（R1 舊碼走 LEGACY_ERROR_CODE_ALIASES）；§32 snapshot v1.1（case/leg/round/intent/decision/statusMapping/intakeMode）。
+- **服務補強**（`lib/submission-tracking-v3-service.ts`）：R1 簽名相容；新增 provider registry/resolveProviderMode、createSubmissionCase/standardDestinationLegs（三路線）/openRound/importExistingCase、createActionIntent/confirmActionIntent（角色＋聲明門）、Attempt reconcile/reserveDuplicate/cancelLocal、ingestReceiptForCase（expectedTarget/round/ID_PENDING）、projectStatus（舊信晚到不覆蓋）、mapStatusText（Decision in Process→DECISION_PENDING）、recordDecisionRecord、review splitReviewComment/assertSourceComplete/createConflictDisposition、checkResponseClaims(claim checker)、ReviewResponseWorkOrder、deadline(DATE_ONLY/timezone)、withdrawal stage、transfer/assessAppeal、setOutcome（Accept≠Publish、Award≠Funds）、verifyInboundWebhook/isolateExtracted/htmlSafe/assertDisclosure（入站隔離）。
+- **API 層**：既有 submission-tracking-v3 routes 契約相容保留；欄位透過新 service 富化。
+- **驗收證據**：`scripts/verify-stage19-full-72-items.ts` **對齊規格 §35 T01–T72（72/72 PASS，3 NOT_RUN**：LIVE 官方入口送件、email/webhook connector LIVE、UI 深度整合）；`verify-stage19-stage20-consumer-contract.ts` **44/44 PASS**（case/leg/round、provider 三模式、ActionIntent、DecisionRecord、7-tier evidence、U20 receiver 門）。`npx tsc --noEmit` 0 errors；回歸 U18（79）、U17（66）、U16（60）、U15（60）、U14（60）＋各 consumer（27/61/72/70）全 PASS。
+- **誠實標記**：submission_execution_authorized=false 恆定；GUIDED_MANUAL 不臆造 endpoint；Decision in Process≠Accept；接受≠出版、核定≠款到/人體研究授權；R1≠R0（新 Round＋新授權）；fixture≠真實稿件已送件；未部署 Zeabur、未跑正式 DB migration。
+- **停止邊界**：完成第十九階段 R2 後停止，等待 V3-U20「接受／核定後作業與成果管理」。
+
 ## V3-U19-FULL：第十九階段「正式送件、狀態追蹤與審查往返」建置完成（2026-09-06/07 UTC）
 - **規格基準**：`docs/stage19/spec-v3-4.0.md`（依使用者 Telegram 訊息內文九節收錄）。
 - **上游 Gate 對照**：`FINAL_PACKAGE_LOCKED_AND_HANDOFF_READY`（packageLocked + decision ≠ NOT_READY）；未 lock 阻擋進入追蹤。

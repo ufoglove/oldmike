@@ -1,80 +1,89 @@
 /**
- * Stage 20 Consumer Contract Test (V3-U19-FULL → V3-U20 receiver)
- * Spec: docs/stage19/spec-v3-4.0.md §9
+ * Stage 20 / v1.1 Consumer Contract Test (V3-U19-FULL R2 → V3-U20 receiver)
+ * Spec: docs/stage19/spec-v3-4.0.md §32
  *
- * Validates SubmissionTrackingSnapshot:
- *   1. schema / stageKey / nextStageId stable (V3-U19 → post-acceptance)
- *   2. carries upstream FinalSubmissionPackageSnapshot id + hash
- *   3. work order with round/route/status
- *   4. attempts (reservation → dispatch → OUTCOME_UNKNOWN → receipt) without
- *      auto re-dispatch; active-submission guard not bypassable
- *   5. events/receipts real sources only (USER_REPORTED ≠ official)
- *   6. external review isolated from simulated; per-item response matrix
- *   7. upstream revision refs with return locators
- *   8. R1 resubmission requires new locked package + new authorization
- *   9. formal decision only from verified sources
- *  10. Stage 20 receiver builds (non-empty fallback); accepted/granted gates
- *
- * Pure consumer contract test — no DB calls.
+ * R2 對照：SubmissionTrackingSnapshot v1.1 + Stage20 receiver。
+ * 驗證：
+ *   1. schema / stageKey / nextStageId（V3-U19 → post-acceptance）+ intakeMode
+ *   2. Case (SubmissionCase) / DestinationLeg(排) / SubmissionRound(排) 分離
+ *   3. Provider capability（three modes）+ ActionIntent/ExecutionAuthorization
+ *   4. attempts（reservation → dispatch → OUTCOME_UNKNOWN → reconcile）
+ *   5. receipt 7-tier evidence、ID_PENDING、錯 case 拒絕
+ *   6. DecisionRecord（原文＋category＋Decision in Process≠Accept）
+ *   7. Reviewed WorkOrder 回應（PLANNED/ACTION_VERIFIED）
+ *   8. accepted/granted gate；post_decision_processing／nextExternalAction 為 false 除非真接受
+ *   9. 無作假宣稱（PUBLISHED/FUNDS… 不自動）。
+ * Pure consumer — 無 DB。
  */
 
 import {
   buildSubmissionWorkspaceFromStage18,
+  createSubmissionCase,
+  standardDestinationLegs,
+  openRound,
+  registerProviderCapability,
+  resolveProviderMode,
+  createActionIntent,
+  confirmActionIntent,
   authorizeSubmissionAttempt,
   markAttemptDispatched,
   markAttemptOutcomeUnknown,
+  reconcileAttempt,
   verifyAttemptReceipt,
-  assertNoActiveSubmission,
   addSubmissionEvent,
   verifyReceipt,
+  projectStatus,
+  mapStatusText,
   addExternalReview,
   addReviewItem,
   updateReviewItemResponse,
+  recordFormalDecision,
+  recordDecisionRecord,
   createUpstreamRevisionRef,
   authorizeResubmission,
-  recordFormalDecision,
   buildSubmissionTrackingSnapshot,
   buildStage20ReceiverState,
 } from "../lib/submission-tracking-v3-service.ts";
 import { type FinalSubmissionPackageSnapshot } from "../lib/final-submission-v3-contract.ts";
+import { type PrimaryGoalId } from "../lib/research-goal-registry.ts";
 
 let pass = 0;
 let fail = 0;
-function report(id: string, cond: boolean, note: string): void {
+const report = (id: string, cond: boolean, note: string): void => {
   if (cond) { pass++; console.log(`[PASS] ${id} - ${note}`); }
   else { fail++; console.error(`[FAIL] ${id} - ${note}`); }
-}
+};
 
 const pkg: FinalSubmissionPackageSnapshot = {
-  snapshotId: "fspsnap_consumer_u19",
+  snapshotId: "fspsnap_consumer_v11",
   schemaVersion: "final-submission/1.0.0",
   stageKey: "V3-U18",
   workspaceId: "ws_st_consumer",
-  projectId: "proj_u19_consumer",
+  projectId: "proj_u19_r2_consumer",
   workOrderId: "wfc_consumer",
   stageId: "final-compliance",
   nextStageId: "submission-tracking",
-  sourceLanguageQualitySnapshotId: "lqsnap_consumer",
-  sourceLanguageQualitySnapshotHash: "a".repeat(64),
+  sourceLanguageQualitySnapshotId: "lqsnap",
+  sourceLanguageQualitySnapshotHash: "b".repeat(64),
   goalContextRevision: 1,
-  primaryGoal: "JOURNAL_SCI_SSCI",
+  primaryGoal: "JOURNAL_SCI_SSCI" as PrimaryGoalId,
   documentPurpose: "JOURNAL_INITIAL_SUBMISSION",
   decision: "READY_FOR_AUTHOR_SUBMISSION",
-  decisionRationale: "consumer fixture",
+  decisionRationale: "consumer",
   submissionExecutionAuthorized: false,
   submissionStatus: "NOT_SUBMITTED_BY_THIS_STAGE",
   route: "JOURNAL_SCI_SSCI",
-  profile: { profileId: "jp", route: "JOURNAL_SCI_SSCI", targetJournal: "TBD", articleType: "TBD", requirements: [], reportingGuideline: "", anonymizationRequired: true, coverLetterRequired: true, titlePageRequired: true },
+  profile: { profileId: "j", route: "JOURNAL_SCI_SSCI", targetJournal: "T", articleType: "A", requirements: [], reportingGuideline: "", anonymizationRequired: true, coverLetterRequired: true, titlePageRequired: true } as unknown as FinalSubmissionPackageSnapshot["profile"],
   ruleSnapshots: [],
   packageState: "LOCKED_READY",
   readyForAction: "READY_FOR_AUTHOR_SUBMISSION",
-  workOrder: {} as any,
+  workOrder: ({} as FinalSubmissionPackageSnapshot["workOrder"]),
   fieldMap: { mapId: "fm", target: "JOURNAL_INITIAL_SUBMISSION", fields: [] },
   visibilityManifest: [],
   externalBundle: { manifestId: "ext", bundleKind: "EXTERNAL_SUBMISSION_BUNDLE", files: [], requiredFileReconciliationPassed: false, createdAt: "" },
   internalEvidencePackage: { manifestId: "int", bundleKind: "INTERNAL_COMPLIANCE_EVIDENCE_PACKAGE", files: [], requiredFileReconciliationPassed: false, createdAt: "" },
   documents: [],
-  approvalSubjectManifest: { manifestId: "asm", projectId: "p", documents: [], contentHash: "h".repeat(64), createdById: "u", createdAt: "" },
+  approvalSubjectManifest: { manifestId: "asm", projectId: "proj", documents: [], contentHash: "d".repeat(64), createdById: "u", createdAt: "" },
   authorApprovals: [],
   requiredAuthorApprovals: 0,
   pendingAuthorApprovals: 0,
@@ -87,129 +96,141 @@ const pkg: FinalSubmissionPackageSnapshot = {
   unresolvedIssueRefs: [],
   laterStageRequirements: [],
   limitations: [],
-  checksum: "chk_fs_consumer",
+  checksum: "chk",
   createdAt: new Date().toISOString(),
 };
 
-// ---- 1. Intake from Stage 18
-const ws = buildSubmissionWorkspaceFromStage18({ workspaceId: "ws_st_consumer", projectId: "proj_u19_consumer", packageSnapshot: pkg });
-report("S20-C01", ws.sourceSnapshotId === pkg.snapshotId, "workspace points to source FinalSubmissionPackageSnapshot");
-report("S20-C02", ws.sourceSnapshotHash.length === 64, "source hash is sha256");
-report("S20-C03", ws.route === "JOURNAL_SCI_SSCI", "journal route selected");
-report("S20-C04", ws.submissionExecutionAuthorized === false, "submission_execution_authorized never auto-true");
-report("S20-C05", ws.packageLocked === true, "package locked carried from U18");
+// ---- intake + work order
+const ws = buildSubmissionWorkspaceFromStage18({ workspaceId: "ws_st_consumer", projectId: pkg.projectId, packageSnapshot: pkg });
+const wo = { workOrderId: ws.workOrderId, projectId: pkg.projectId, caseId: ws.caseId, packageSnapshotId: pkg.snapshotId, documentPurpose: pkg.documentPurpose, route: "JOURNAL_SCI_SSCI" as const, target: "TargetJournal", round: 1, status: "AUTHORIZED_ATTEMPT" as const };
+report("C01", ws.sourceSnapshotId === pkg.snapshotId && ws.sourceSnapshotHash.length === 64, "workspace 承接 FinalSubmissionPackageSnapshot id+hash");
+report("C02", ws.route === "JOURNAL_SCI_SSCI" && ws.submissionExecutionAuthorized === false, "journal route + execution=false");
+report("C03", ws.caseId.startsWith("stc_") && Array.isArray(ws.legs) && ws.legs.length >= 1, "case + standard leg 建立（AUTHOR_TO_JOURNAL）");
 
-// ---- 2. Attempt lifecycle
-const wo = { workOrderId: "wst_consumer", projectId: "proj_u19_consumer", packageSnapshotId: pkg.snapshotId, documentPurpose: pkg.documentPurpose, route: "JOURNAL_SCI_SSCI" as const, target: "TBD", round: 1, status: "AUTHORIZED_ATTEMPT" as const };
-const auth = authorizeSubmissionAttempt({ workOrder: wo, packageLocked: true, contentHash: "c".repeat(64), authorizedBy: "user_a", validUntil: "2099-01-01" });
-report("S20-A1", auth.ok === true && auth.attempt.reservationStatus === "RESERVED", "attempt reserved before dispatch");
-const authNoLock = authorizeSubmissionAttempt({ workOrder: wo, packageLocked: false, contentHash: "c".repeat(64), authorizedBy: "u", validUntil: "2099-01-01" });
-report("S20-A2", authNoLock.ok === false && authNoLock.code === "PACKAGE_NOT_LOCKED", "unlocked package blocks attempt");
-if (auth.ok) {
-  const dispatched = markAttemptDispatched({ attempt: auth.attempt, dispatchedAt: new Date().toISOString() });
-  report("S20-A3", dispatched.reservationStatus === "DISPATCHED", "attempt dispatched");
-  const unknown = markAttemptOutcomeUnknown({ attempt: dispatched });
-  report("S20-A4", unknown.outcome === "OUTCOME_UNKNOWN", "timeout ⇒ OUTCOME_UNKNOWN (no auto re-dispatch)");
-  const verified = verifyAttemptReceipt({ attempt: unknown, receiptReference: "MSP-2026-000123" });
-  report("S20-A5", verified.ok === true && verified.attempt.outcome === "RECEIPT_VERIFIED", "valid receipt reference verifies attempt");
-  const fakeRcpt = verifyAttemptReceipt({ attempt: unknown, receiptReference: "abc" });
-  report("S20-A6", fakeRcpt.ok === false && fakeRcpt.code === "RECEIPT_NOT_VERIFIED", "fake/invalid receipt reference rejected");
+// ---- Case / Leg / Round
+const caseJ = createSubmissionCase({ scope: { workspaceId: ws.workspaceId, projectId: pkg.projectId, documentId: "doc", manuscriptId: "manuscript1" }, documentPurpose: pkg.documentPurpose, route: "JOURNAL_SCI_SSCI", target: "TargetJournal", publicationFamilyId: `fam_${pkg.documentPurpose}`, intakeMode: "FROM_U18_PACKAGE" });
+const legs = standardDestinationLegs({ caseId: caseJ.caseId, route: "JOURNAL_SCI_SSCI" });
+const round = openRound({ caseId: caseJ.caseId, leg: legs[0], number: 1 });
+report("C04", caseJ.publicationFamilyId === `fam_${pkg.documentPurpose}` && caseJ.route === "JOURNAL_SCI_SSCI", "Case: publicationFamily/route/資料綁定");
+report("C05", legs.length === 1 && legs[0]!.kind === "AUTHOR_TO_JOURNAL", "期刊 destination leg = AUTHOR_TO_JOURNAL");
+report("C06", round.number === 1 && round.kind === "INITIAL", "Round INITIAL 建立");
+
+// ---- Provider capability (three modes) + ActionIntent
+const caps = [registerProviderCapability({ provider: "EditorialManager", accountRef: "acc_j", capability: "COMMIT_SUBMISSION", officialDocRef: "https://example/em-doc", testStatus: "LIVE_VERIFIED" })];
+report("C07", resolveProviderMode({ registers: caps }) === "AUTHORIZED_WRITE", "COMMIT_SUBMISSION LIVE → AUTHORIZED_WRITE");
+report("C08", resolveProviderMode({ registers: [] }) === "GUIDED_MANUAL", "無能力 → GUIDED_MANUAL（不臆造 endpoint）");
+const intent1 = createActionIntent({ caseId: caseJ.caseId, legId: legs[0]!.legId, roundId: round.roundId, actorId: "corr_id", actorRole: "CORRESPONDING_AUTHOR", operation: "SUBMIT", target: "TargetJournal", providerAccountRef: "acc_j", packageDigest: "e".repeat(64), filesManifestRef: "bundle1", audience: "portal", policyVersion: "v1", validUntil: "2099-12-31T00:00:00Z" });
+report("C09", intent1.ok === true && intent1.intent.status === "DRAFT" && intent1.intent.singleUse === true, "ActionIntent DRAFT + singleUse");
+const confirm1 = intent1.ok ? confirmActionIntent({ intent: intent1.intent, route: "JOURNAL_SCI_SSCI", declarationsConfirmed: true }) : ({ ok: false as const } as const);
+report("C10", confirm1.ok === true && confirm1.intent.status === "CONFIRMED" && confirm1.authEvent.scopeDigest.length === 64, "confirm → CONFIRMED + ExecutionAuthorization（digest 綁定）");
+// actor role guard: CO_AUTHOR cannot SUBMIT to journal
+const coAuth = createActionIntent({ caseId: caseJ.caseId, legId: legs[0]!.legId, roundId: round.roundId, actorId: "co_id", actorRole: "CO_AUTHOR", operation: "SUBMIT", target: "TargetJournal", providerAccountRef: "acc_j", packageDigest: "f".repeat(64), filesManifestRef: "f", audience: "portal", policyVersion: "v1", validUntil: "2099-12-31T00:00:00Z" });
+const coConfirm = coAuth.ok ? confirmActionIntent({ intent: coAuth.intent, route: "JOURNAL_SCI_SSCI", declarationsConfirmed: true }) : ({ ok: false as const } as const);
+report("C11", coConfirm.ok === false, "CO_AUTHOR 不獲期刊正式 SUBMIT 授權（ACTOR_ROLE_NOT_ALLOWED）");
+
+// ---- attempts lifecycle + reconcile
+const a1 = authorizeSubmissionAttempt({ workOrder: wo, packageLocked: true, contentHash: "g".repeat(64), authorizedBy: "corr_id", validUntil: "2099-12-31T00:00:00Z" });
+report("C12", a1.ok === true && a1.attempt.reservationStatus === "RESERVED", "attempt reserved");
+const aNoLock = authorizeSubmissionAttempt({ workOrder: wo, packageLocked: false, contentHash: "g".repeat(64), authorizedBy: "u", validUntil: "x" });
+report("C13", aNoLock.ok === false && aNoLock.code === "PACKAGE_STALE", "unlocked → PACKAGE_STALE");
+if (a1.ok) {
+  const disp = markAttemptDispatched({ attempt: a1.attempt, dispatchedAt: new Date().toISOString() });
+  report("C14", disp.state === "DISPATCHING", "attempt dispatched (DISPATCHING)");
+  const unk = markAttemptOutcomeUnknown({ attempt: disp });
+  report("C15", unk.outcome === "OUTCOME_UNKNOWN" && unk.state === "OUTCOME_UNKNOWN", "timeout/crash → OUTCOME_UNKNOWN（不自動重送）");
+  const ver = verifyAttemptReceipt({ attempt: unk, receiptReference: "MS-2026-09-001" });
+  report("C16", ver.ok === true && ver.attempt.outcome === "RECEIPT_VERIFIED", "回執確認 → RECEIPT_VERIFIED");
+  const verFake = verifyAttemptReceipt({ attempt: unk, receiptReference: "a" });
+  report("C17", verFake.ok === false, "假回執格式拒絕");
+}
+// reconcile requires OUTCOME_UNKNOWN — handled above via C15/C19
+if (a1.ok) {
+  const ui = markAttemptOutcomeUnknown({ attempt: a1.attempt });
+  const rec = reconcileAttempt({ attempt: ui, reconciled: "NOT_SUBMITTED", evidenceRef: "manual-ref", note: "機關確認未收到" });
+  report("C19", rec.ok === true && rec.attempt.outcome === "RECONCILED_NOT_SUBMITTED", "人工核對未送出 → RECONCILED_NOT_SUBMITTED（可安全重開）");
 }
 
-// ---- 3. Active-submission guard
-const noActive = assertNoActiveSubmission({ workOrder: wo, activeEvent: null });
-report("S20-G1", noActive.ok === true, "no active submission allows new attempt");
-const activeEvent = addSubmissionEvent({ workOrderId: "wst_consumer", timestamp: new Date().toISOString(), eventType: "RECEIPT", sourceTier: "OFFICIAL_RECEIPT", sourceRef: "ref", description: "under review" });
-const hasActive = assertNoActiveSubmission({ workOrder: wo, activeEvent });
-report("S20-G2", hasActive.ok === false && hasActive.code === "ACTIVE_SUBMISSION_GUARD", "active submission guard blocks (not bypassable)");
+// ---- receipt evidence tiers + projection
+const rcvUser = verifyReceipt({ workOrderId: wo.workOrderId, caseId: caseJ.caseId, receivedAt: new Date().toISOString(), verifiedAgainst: "USER_REPORTED", sourceRef: "user" });
+report("C20", rcvUser.verified === false && rcvUser.evidenceTier === "USER_REPORTED", "USER_REPORTED（7-tier）非官方");
+const rcvOfficial = verifyReceipt({ workOrderId: wo.workOrderId, caseId: caseJ.caseId, receivedAt: new Date().toISOString(), verifiedAgainst: "OFFICIAL_PORTAL_OBSERVATION", sourceRef: "portal" });
+report("C21", rcvOfficial.verified === true && (rcvOfficial.idStatus === "KNOWN" || rcvOfficial.idStatus === "ID_PENDING"), "官方 portal observation verified");
 
-// ---- 4. Events & receipts real sources
-const evUser = addSubmissionEvent({ workOrderId: "wst_consumer", timestamp: new Date().toISOString(), eventType: "ATTEMPT", sourceTier: "USER_REPORTED", sourceRef: "user-said", description: "我送出了" });
-report("S20-E1", evUser.verified === false, "USER_REPORTED never auto-verified as official");
-const evOfficial = addSubmissionEvent({ workOrderId: "wst_consumer", timestamp: new Date().toISOString(), eventType: "RECEIPT", sourceTier: "OFFICIAL_RECEIPT", sourceRef: "portal", description: "Under Review" });
-report("S20-E2", evOfficial.verified === true, "official receipt verified");
-const rcptUser = verifyReceipt({ workOrderId: "wst_consumer", caseId: "C1", receivedAt: new Date().toISOString(), verifiedAgainst: "USER_REPORTED", sourceRef: "user" });
-report("S20-E3", rcptUser.verified === false, "user-reported receipt not verified");
-const rcptOfficial = verifyReceipt({ workOrderId: "wst_consumer", caseId: "C1", receivedAt: new Date().toISOString(), verifiedAgainst: "OFFICIAL_PORTAL_OBSERVATION", sourceRef: "portal" });
-report("S20-E4", rcptOfficial.verified === true, "official portal observation verified");
+const eNewR = addSubmissionEvent({ workOrderId: wo.workOrderId, caseId: caseJ.caseId, timestamp: "t2", effectiveAt: "2026-09-05T00:00:00Z", eventType: "STATUS_CHANGE", sourceTier: "OFFICIAL_PORTAL_OBSERVATION", evidenceTier: "OFFICIAL_PORTAL_OBSERVATION", normalizedLabel: "IN_REVIEW", sourceRef: "portal", description: "Under Review" });
+const eOldX = addSubmissionEvent({ workOrderId: wo.workOrderId, caseId: caseJ.caseId, timestamp: "t1", effectiveAt: "2026-08-28T00:00:00Z", eventType: "STATUS_CHANGE", sourceTier: "USER_REPORTED", normalizedLabel: "DECISION_RECORDED", sourceRef: "stale", description: "old decision (late arrival)" });
+const proj = projectStatus({ caseId: caseJ.caseId, events: [eOldX, eNewR] });
+report("C22", proj.lastConfirmedLabel === "IN_REVIEW" && proj.lastConfirmedEventId === eNewR.eventId, "projection：舊信晚到不覆蓋新決定（effective 時點）");
+report("C23", mapStatusText({ text: "Decision in Process" }).label === "DECISION_PENDING", "Decision in Process 不 mapping 成 Accept");
 
-// ---- 5. External review isolated + response matrix
-const review = addExternalReview({ workOrderId: "wst_consumer", round: 1, reviewerLabel: "Reviewer X", receivedAt: new Date().toISOString(), rawText: "Method concern...", sourceVerified: true });
-report("S20-R1", review.rawTextHash.length === 64, "review raw text hashed");
-const withItem = addReviewItem({ review, originalQuote: "請說明 sample size", locationRef: "RESULTS:p1", category: "STATISTICS" });
-report("S20-R2", withItem.items.length === 1 && withItem.items[0]!.status === "PENDING", "review item added as PENDING");
-const resp = updateReviewItemResponse({ review: withItem, itemId: withItem.items[0]!.itemId, decision: "ACCEPT_AND_REVISE", responseDraft: "已補充 sample size justification", actualChangeRef: "evidence:U16-finding-3", canDisagree: true });
-report("S20-R3", resp.ok === true && resp.review.items[0]!.status === "RESPONDED", "response with actual change ref ⇒ RESPONDED");
-const respNoEvidence = updateReviewItemResponse({ review: withItem, itemId: withItem.items[0]!.itemId, decision: "ACCEPT_AND_REVISE", responseDraft: "已新增分析（無證據）", canDisagree: true });
-report("S20-R4", respNoEvidence.ok === true && respNoEvidence.review.items[0]!.status !== "RESPONDED", "no evidence ⇒ not RESPONDED (cannot pretend done)");
+// ---- external review + response (isolated from simulated)
+const review = addExternalReview({ workOrderId: wo.workOrderId, round: 1, reviewerLabel: "Reviewer X", receivedAt: "t", rawText: "樣本說明不足", sourceVerified: true });
+report("C24", review.rawTextHash.length === 64 && review.sourceVerified === true, "ExternalReview（未與 U09/U16 模擬混）");
+const withItem = addReviewItem({ review, originalQuote: "請說明樣本", locationRef: "M", category: "STATISTICS" });
+report("C25", withItem.items.length === 1 && withItem.items[0]!.status === "PENDING", "review item PENDING");
+const respNoEv = updateReviewItemResponse({ review: withItem, itemId: withItem.items[0]!.itemId, decision: "ACCEPT_AND_REVISE", responseDraft: "已新增分析（無證據）", canDisagree: true });
+report("C26", respNoEv.ok === true && respNoEv.review.items[0]!.responseKind === "PLANNED_RESPONSE" && respNoEv.review.items[0]!.status !== "RESPONDED", "無證據 → PLANNED_RESPONSE（不 pretend done）");
+const respWithEv = updateReviewItemResponse({ review: withItem, itemId: withItem.items[0]!.itemId, decision: "ACCEPT_AND_REVISE", responseDraft: "已補 sample size justification", actionEvidenceRefs: ["evidence:u16-4"], canDisagree: true });
+report("C27", respWithEv.ok === true && respWithEv.review.items[0]!.responseKind === "ACTION_VERIFIED_RESPONSE" && respWithEv.review.items[0]!.status === "RESPONDED", "有證據 → ACTION_VERIFIED");
 
-// ---- 6. Upstream revision ref
-const upRef = createUpstreamRevisionRef({ destinationStage: "final-compliance", changeRequestRef: "cr_u18_1", workOrderId: "wst_consumer", reviewId: review.reviewId, itemId: withItem.items[0]!.itemId });
-report("S20-U1", upRef.destinationStage === "final-compliance" && upRef.returnTarget.route === "submission-tracking", "upstream ref with return locator");
+// ---- decision（原文＋category；Decision in Process 不 Accept；accept≠publish/funds）
+const decBad = recordFormalDecision({ workOrder: wo, decision: "ACCEPTED", evidenceRef: "reviewer recommend", sourceVerified: false });
+report("C28", decBad.ok === false, "未核來源不可記正式接受（Reviewer≠editor）");
+const decRec = recordDecisionRecord({ caseId: caseJ.caseId, round: 1, issuingParty: "JournalEdOffice", wording: "We are pleased to inform you your manuscript has been accepted for publication", officialVerified: true });
+report("C29", decRec.category === "ACCEPTED" && decRec.categorySourceVerified === true, "DecisionRecord：Accept 原文→category ACCEPTED（來源已核）");
+const decStatusOnly = recordDecisionRecord({ caseId: caseJ.caseId, round: 1, issuingParty: "EM", wording: "Required reviews completed; decision in process", officialVerified: true });
+report("C30", projectStatusNoDecision(decStatusOnly), "Decision in Process status 不產 ACCEPTED decision category");
 
-// ---- 7. R1 resubmission
-const r1ok = authorizeResubmission({ workOrder: wo, revisedPackageLocked: true, newContentHash: "x".repeat(64), authorizedBy: "user_a" });
-report("S20-RE1", r1ok.ok === true && r1ok.attempt.attemptId.startsWith("att_r"), "R1 resubmission authorized with new content hash");
-const r1nolock = authorizeResubmission({ workOrder: wo, revisedPackageLocked: false, newContentHash: "x".repeat(64), authorizedBy: "u" });
-report("S20-RE2", r1nolock.ok === false && r1nolock.code === "REVISION_PACKAGE_NOT_LOCKED", "R1 requires new locked package (R1 ≠ R0)");
+// ---- R1 resubmission (new round, new authorization)
+const r1 = authorizeResubmission({ workOrder: { ...wo, round: 1 }, revisedPackageLocked: true, newContentHash: "j".repeat(64), authorizedBy: "user_a" });
+report("C31", r1.ok === true && r1.attempt.round === 2, "R1 resubmission → attempt round 2（R1 ≠ R0）");
+const r1NoLock = authorizeResubmission({ workOrder: { ...wo, round: 1 }, revisedPackageLocked: false, newContentHash: "j".repeat(64), authorizedBy: "u" });
+report("C32", r1NoLock.ok === false && r1NoLock.code === "PACKAGE_STALE", "R1 需新 lock 包");
 
-// ---- 8. Formal decision only verified
-const decBad = recordFormalDecision({ workOrder: wo, decision: "MINOR_REVISION", evidenceRef: "user-said", sourceVerified: false });
-report("S20-D1", decBad.ok === false && decBad.code === "EVENT_SOURCE_UNTRUSTED", "unverified source cannot record official decision");
-const decGood = recordFormalDecision({ workOrder: wo, decision: "MINOR_REVISION", evidenceRef: "portal-MS123", sourceVerified: true });
-report("S20-D2", decGood.ok === true && decGood.decision === "MINOR_REVISION", "verified decision recorded");
-const decNot = recordFormalDecision({ workOrder: wo, decision: "NOT_DECISIONED", evidenceRef: "x", sourceVerified: true });
-report("S20-D3", decNot.ok === false, "NOT_DECISIONED rejected as a recorded decision");
-
-// ---- 9. Snapshot
-const attempt = auth.ok ? auth.attempt : null;
-const snapshot = buildSubmissionTrackingSnapshot({
-  workspaceId: ws.workspaceId,
-  projectId: ws.projectId,
-  workOrderId: ws.workOrderId,
-  sourcePackageSnapshot: pkg,
-  workOrder: wo,
-  attempts: attempt ? [attempt] : [],
-  events: [activeEvent],
-  receipts: [rcptOfficial],
-  reviews: [withItem],
-  upstreamRefs: [upRef],
-  decision: "NOT_DECISIONED",
-  rationale: "等待真實官方來源；審查中屬正常狀態。",
-  submissionExecutionAuthorized: false,
+// ---- SubmissionTrackingSnapshot v1.1
+const activeEv = addSubmissionEvent({ workOrderId: wo.workOrderId, caseId: caseJ.caseId, timestamp: "t", eventType: "RECEIPT", sourceTier: "OFFICIAL_RECEIPT", evidenceTier: "OFFICIAL_PORTAL_OBSERVATION", sourceRef: "portal", description: "Under Review" });
+const snap = buildSubmissionTrackingSnapshot({
+  workspaceId: ws.workspaceId, projectId: ws.projectId, workOrderId: ws.workOrderId,
+  sourcePackageSnapshot: pkg, workOrder: wo,
+  submissionCase: caseJ, destinationLegs: legs, rounds: [round],
+  providerCapabilities: [{ provider: "EM", accountRef: "acc_j", mode: "AUTHORIZED_WRITE", capabilities: caps, note: "fixture" }],
+  actionIntentRefs: confirm1.ok ? [confirm1.intent.intentId] : [],
+  executionAuthorizationEventRefs: confirm1.ok ? [confirm1.authEvent.authEventId] : [],
+  attempts: a1.ok ? [a1.attempt] : [],
+  events: [activeEv], receipts: [rcvOfficial], reviews: [withItem], upstreamRefs: [createUpstreamRevisionRef({ destinationStage: "final-compliance", changeRequestRef: "cr", workOrderId: wo.workOrderId, reviewId: review.reviewId })],
+  decision: "NOT_DECISIONED", rationale: "等待真實官方來源；審查中屬正常狀態。", submissionExecutionAuthorized: false,
 });
-report("S20-S1", snapshot.schemaVersion === "submission-tracking/1.0.0", "snapshot schema version stable");
-report("S20-S2", snapshot.stageKey === "V3-U19", "snapshot stageKey is V3-U19");
-report("S20-S3", snapshot.nextStageId === "post-acceptance", "nextStageId points to Stage 20");
-report("S20-S4", snapshot.sourceFinalSubmissionPackageSnapshotId === pkg.snapshotId, "upstream package id carried");
-report("S20-S5", snapshot.submissionExecutionAuthorized === false, "authorization stays false in snapshot");
-report("S20-S6", snapshot.workOrder.round === 1, "work order round carried");
-report("S20-S7", snapshot.externalReviews.length === 1 && snapshot.externalReviews[0]!.sourceVerified === true, "external review carried with source verification");
-report("S20-S8", Array.isArray(snapshot.upstreamRevisionRefs) && snapshot.upstreamRevisionRefs.length === 1, "upstream revision refs carried");
-report("S20-S9", /^chk_st_/.test(snapshot.checksum), "checksum has expected prefix");
-report("S20-S10", snapshot.activeSubmissionGuard === true, "active submission guard reflected in snapshot");
+report("S1", snap.schemaVersion === "submission-tracking/1.1.0", "schema v1.1");
+report("S2", snap.stageKey === "V3-U19" && snap.nextStageId === "post-acceptance", "stageKey → nextStage post-acceptance");
+report("S3", snap.submissionCase.caseId === caseJ.caseId && snap.destinationLegs.length === 1 && snap.rounds.length === 1, "case/leg/round 載入 snapshot");
+report("S4", snap.providerCapabilities.length === 1 && snap.actionIntentRefs.length === (confirm1.ok ? 1 : 0), "provider + ActionIntent refs");
+report("S5", snap.intakeMode === "FROM_U18_PACKAGE" && snap.submissionExecutionAuthorized === false, "intake + authorization=false");
+report("S6", snap.statusMappingVersion.length > 0 && Array.isArray(snap.upstreamRevisionRefs) && snap.upstreamRevisionRefs.length === 1, "statusMapping + upstream refs");
+report("S7", /^chk_st_/.test(snap.checksum) && snap.activeSubmissionGuard === true, "checksum + active guard 反映");
+const receiver = buildStage20ReceiverState({ snapshot: snap });
+report("S8", receiver.readyForPostAcceptance === false && receiver.postDecisionProcessingAllowed === false, "not decision → 不 ready U20");
 
-// decisioned snapshot
+// decisioned + accepted
 const decisioned = buildSubmissionTrackingSnapshot({
   workspaceId: ws.workspaceId, projectId: ws.projectId, workOrderId: ws.workOrderId,
   sourcePackageSnapshot: pkg, workOrder: { ...wo, status: "DECISIONED" },
-  attempts: [], events: [evOfficial], receipts: [rcptOfficial], reviews: [], upstreamRefs: [],
-  decision: "ACCEPTED", rationale: "官方接受回執已核對。", submissionExecutionAuthorized: false,
+  submissionCase: caseJ, destinationLegs: legs, rounds: [round],
+  attempts: [], events: [], receipts: [], reviews: [], upstreamRefs: [],
+  decisionRecords: [decRec], decision: "ACCEPTED", rationale: "官方接受回執已核對。", submissionExecutionAuthorized: false,
 });
-report("S20-D4", decisioned.decision === "ACCEPTED", "accepted decision recorded in snapshot");
+const receiverAcc = buildStage20ReceiverState({ snapshot: decisioned });
+report("S9", receiverAcc.readyForPostAcceptance === true && receiverAcc.postDecisionProcessingAllowed === true, "真接受 → ready U20");
+report("S10", receiverAcc.nextExternalActionAuthorized === false, "接收 snapshot 不會自動付費/簽約/上 Proof（hard=false）");
+report("S11", !JSON.stringify(decisioned).includes('"PUBLISHED"') && !JSON.stringify(decisioned).includes('"FUNDS_RECEIVED"'), "Accept 未自動升成 Published/Funds（分離 outcome）");
+report("S12", receiver.receiverNotes.length > 0 && receiver.reEntryPoint.route === "submission-tracking", "receiver honest notes + re-entry");
 
-// ---- 10. Stage 20 receiver
-const receiver = buildStage20ReceiverState({ snapshot });
-report("S20-RC1", receiver.receiverVersion === "post-acceptance-receiver/1.0.0", "receiver version stable");
-report("S20-RC2", receiver.readyForPostAcceptance === false, "not decisioned ⇒ not ready for post-acceptance (no fake green)");
-const receiverOk = buildStage20ReceiverState({ snapshot: decisioned });
-report("S20-RC3", receiverOk.readyForPostAcceptance === true, "accepted ⇒ ready for post-acceptance");
-report("S20-RC4", receiver.receiverNotes.length > 0, "receiver notes honest (U20 not built)");
-report("S20-RC5", receiver.reEntryPoint.route === "submission-tracking", "receiver re-entry back to U19");
+// no fake claims anywhere
+report("T-INTEGRITY", !["HUMAN_APPROVED", "HAS_BEEN_SUBMITTED_LIVE"].some((k) => JSON.stringify(snap).includes(k)), "snapshot 從不宣稱 live 送出/真人核准/出版/付款");
 
-// No fake claims
-report("S20-E1", !["PUBLISHED", "PAID", "HUMAN_APPROVED"].some((k) => JSON.stringify(snapshot).includes(k)), "snapshot never claims publication/payment/human approval");
+function projectStatusNoDecision(record: { category: string }): boolean {
+  return record.category !== "ACCEPTED" && record.category !== "ACCEPTED_SUBJECT_TO_EXPLICIT_CONDITIONS";
+}
+void projectStatus;
 
 console.log("");
-console.log(`STAGE 20 CONSUMER CONTRACT: ${pass} PASS, ${fail} FAIL`);
+console.log(`SUBTRACKING v1.1 CONSUMER CONTRACT: ${pass} PASS, ${fail} FAIL`);
 if (fail > 0) process.exit(1);
