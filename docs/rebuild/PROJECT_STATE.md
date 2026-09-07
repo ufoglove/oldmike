@@ -1,3 +1,28 @@
+## V3-R02-FULL：受控正式上線、上線驗證與營運交接（2026-09-07 UTC）
+
+- **任務定位**：工程發布任務，非科研第 21 階段，不加入研究進度分母。本指令不等於可無條件部署、停站、改 DNS、正式 migration 或對外送件。
+- **規格基準**：`docs/release/V3-R02/spec-v3-4.0.md`（官方 32 節規格檔，SHA-256 `ad60b0e9…`，逐字一致）。
+- **上游 Gate 對照**：`RELEASE_CANDIDATE_READY_AWAITING_OWNER_APPROVAL`（繼承 R01 之 ReleaseReadinessSnapshot 與完整驗收證據）。
+- **六大工程門禁**（`PRODUCTION_LAUNCH_GATES`）：
+  1. `R02_RELEASE_INPUT_VERIFIED`：R01 候選、真實證據、scope、target 相符，核心問題已處理。
+  2. `R02_DEPLOYMENT_REHEARSAL_PASSED`：策略、相容、備份、queue 交接、smoke、回復已在隔離環境演練。
+  3. `R02_PRODUCTION_CHANGE_AUTHORIZED`：存在匹配 manifest、target、operations、期限與受眾之真人明確授權。
+  4. `R02_PRODUCTION_RELEASE_VERIFIED`：實際版本已部署並接流量，必要生產 smoke、ACL、保存、文件及 provider 能力有證據（僅平台 Running 不算）。
+  5. `R02_ROLLOUT_OBSERVATION_PASSED`：觀測窗口與樣本量完成、指標合格、無未解 P0/P1、成本與回復條件可用。
+  6. `R02_OPERATIONS_HANDOFF_ACCEPTED`：管理手冊、責任人、告警/備份與使用者確認完成，後續研究義務可持續。
+- **核心模型與契約**（`lib/production-launch-v3-contract.ts`、`lib/production-launch-v3-service.ts`）：
+  * `LaunchMode`：`FIRST_PRODUCTION_LAUNCH`、`UPDATE_EXISTING_PRODUCTION`、`VERIFY_EXISTING_RELEASE`、`PREPARATION_ONLY`。
+  * `EnvironmentManifest`：雙重獨立信號驗證生產環境身份，避免 staging 指向 production DB。
+  * `ProductionReleaseAuthorization`：發布授權獨立存證，不覆寫 R01 旗標；嚴格綁定 commit、artifact 與 migration checksums。
+  * `ReleaseAttempt`：先落盤 reservation 防止雙擊或多 worker 重複派送；逾時標記 `DEPLOYMENT_OUTCOME_UNKNOWN`。
+  * `ProductionLaunchSnapshot`：schema v3.4.0；`researchStateMutationAuthorized`、`submissionPaymentPublicationAuthorized`、`nextUnspecifiedExternalActionAuthorized` 恆為 `false`。
+- **管理端 API**：`/api/admin/production-launch-v3`（支援 GET 評估上線狀態與 POST 建立 ProductionLaunchSnapshot）。
+- **驗收證據（附錄A R02-T001～R02-T064）**：
+  * `scripts/verify-stage-r02-full-64-items.ts`：**62 PASS, 0 FAIL, 2 NOT_RUN**（R02-T057 真實平台 manual operator 憑證收集、R02-T058 真人使用者簽署點擊確認，誠實標示）。
+  * `npx tsc --noEmit`：**0 errors**。
+  * 歷史迴歸：R01 80項（78 PASS）、U19（72/72）、U20（72/72）全數維持綠燈。
+- **安全與停止界線**：未有真實生產部署授權前，停在 `RELEASE_READY_AWAITING_OWNER_APPROVAL`。不自行執行破壞性正式 migration、不切換正式流量、不發起外部對外投遞。
+
 ## V3-R01-FULL：全站整合驗收與正式上線準備（2026-09-07 UTC）
 
 - **任務定位**：V3-R01 為工程整合驗收與發布準備，非科研必經第 21 階段；不計入研究進度分母，不變更研究資料，不重放未授權之外部副作用。
