@@ -50,11 +50,11 @@ export async function POST(request: NextRequest, context: { params: Promise<{ pr
       return NextResponse.json({ ok: false, code: "HANDOFF_SCHEMA_UNSUPPORTED", error: "上游非 submission-tracking v1.1/next=post-acceptance", recoverable: true }, { status: 422 });
     }
 
-    const intake = intakeOutcomeWorkspace({ snapshot });
+    const intake = intakeOutcomeWorkspace({ snapshot, allowedScope: null });
     return NextResponse.json({
       ok: true,
       data: {
-        intake: { route: intake.route, ready: intake.ready, decision: intake.decision },
+        intake: { route: intake.route, decision: intake.decision, intakeGatePassed: intake.intakeGatePassed, baselineOnly: intake.baselineOnly },
         note: "只有接受/核定(源核)才 allowPostAcceptance；其餘 allowPreparation，不自動升正式。submission/付款/公開授權一律需另行重新授權。",
       },
     });

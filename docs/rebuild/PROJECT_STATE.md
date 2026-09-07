@@ -1,3 +1,13 @@
+## V3-U20-FULL-R2：第二十階段完整規格補強（官方 36 節）建置完成（2026-09-07 UTC）
+
+- **規格基準**：`docs/stage20/spec-v3-4.0.md`（官方 36 節版 626 行；SHA-256 `d056eade…`，與使用者附檔逐字一致）。
+- **契約 v2**（`lib/outcome-management-v3-contract.ts`）：多維度狀態（acceptance/production/visibility/indexing/funding 並存）、ProofRoundEntity／ProofIssueEntity／PublisherQueryEntity／ProofCorrectionPackage／AcceptedArtifactBaseline、PublicationRightsProfile／InvoiceObservation、GrantAwardBaseline／FinancialObservation、ExecutionReentryRequest、OutcomeReportRound、ResearchOutputRecord／DepositWorkOrder、CloseoutScope／ArchiveManifest；§33 **9 Gates**（POST_DECISION_INTAKE…OUTCOME_ARCHIVE_VERIFIED）；§32 **17 官方錯誤碼**（HANDOFF_SCHEMA_UNSUPPORTED…ARCHIVE_INCOMPLETE，R1 舊碼走 LEGACY_OM_ERROR_ALIASES）；§34 完整 `OutcomeManagementSnapshot`（48 組 ref 陣列＋readyGates＋flags＋nextAction＋nextExternalActionAuthorized=false）。
+- **服務 v2**：intake（allowedScope 門）／冪等、accepted baseline、proof issue（科學變更一律標 RETURN_U14_16）、query 需真 artifact、rights/payee 護欄、award/financial（counterpartKey 去重、支出核對）、執行 reentry（不解除 U12）、report round 證據認證、output/deposit/release(embargo 預設不公開)、closeout/archive(restore verified)、新 ActionIntent（不重放送件授權）、Gate predicate、snapshot builder（並存 U19 refs 不覆蓋）。
+- **API**：`outcome-management-v3/{initialize,complete,status,export}` 承接 U19、持久化 stageId=`outcome-management`、flags/gates/nextAction、真實匯出 bytes/hash。
+- **驗收**：`verify-stage20-full-72-items.ts` **對齊官方表 T01–T72 72/72 PASS（5 NOT_RUN**：renderer 版面/PDF、publisher/APC/institution LIVE、Zotero/ORCID/Consensus/Crossref/Repository LIVE、正式 DB migration＋UI、date-renderer toolchain）；`verify-stage20-outcome-consumer-contract.ts` **14/14 PASS**。`npx tsc --noEmit` 全 repo 0 errors；U19 回歸（72/72＋44/44）仍 PASS。
+- **誠實標記**：Accepted≠Published/Indexed、Awarded≠FundsReceived/IRB/Exec；Gate 不只因 AI/欄位非空；embargo 預設不自動公開；next_external_action_authorized=false 恆定；不重放送件授權為 proof/付款/簽約/公開；不臆造必做第 21 段；未部署 Zeabur、未跑正式 DB migration。
+- **停止邊界**：完成 U20 完整版後停止；後續成果總覽／指定案件結案封存／持續追蹤／回原研究模組／新研究 seed。
+
 ## V3-U20-FULL：第二十階段「接受／核定後作業與成果管理」建置完成（2026-09-07 UTC）
 
 - **規格基準**：`docs/stage20/spec-v3-4.0.md`（依使用者完整提示詞 8 大節收錄）。
