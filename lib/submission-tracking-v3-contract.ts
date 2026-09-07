@@ -455,6 +455,11 @@ export type SubmissionTrackingSnapshot = {
   decisionRationale: string;
   submissionExecutionAuthorized: boolean; // carries U18=false; true only by explicit U19 authorization
   activeSubmissionGuard: boolean;
+  // §32 接收/下游門（原為 Stage20ReceiverState 欄位；快照亦攜帶供 U20 無損映射）
+  postDecisionProcessingAllowed: boolean; // only true when source verified + accepted/granted
+  postDecisionAllowedScopeRefs: string[];
+  allowedNextActions: string[];
+  nextExternalActionAuthorized: false; // 固定 false（不可重放）
 
   workOrder: SubmissionWorkOrder;
   submissionCase: SubmissionCase;

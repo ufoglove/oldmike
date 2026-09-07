@@ -1097,6 +1097,17 @@ export function buildSubmissionTrackingSnapshot(params: {
     decisionRationale: rationale,
     submissionExecutionAuthorized,
     activeSubmissionGuard: activeGuard,
+    // §32 映射給下游 U20：接受/核定（源核）才允許 post-decision；nextExternal 恆 false 不可重放
+    postDecisionProcessingAllowed: acceptedOrGranted && decisionVerified,
+    postDecisionAllowedScopeRefs:
+      decision === "ACCEPTED" || decision === "GRANTED"
+        ? ["PROOF_HANDLING", "CONTRACT_OR_GRANT_TERMS", "RESEARCH_EXECUTION_PREP", "OUTCOME_REPORT", "FINANCE_RECONCILE"]
+        : [],
+    allowedNextActions:
+      decision === "ACCEPTED" || decision === "GRANTED"
+        ? ["POST_ACCEPTANCE_PROCESSING", "RESULT_OVERVIEW", "CLOSE_OR_ARCHIVE"]
+        : ["PREPARE_ONLY"],
+    nextExternalActionAuthorized: false,
 
     workOrder,
     submissionCase,

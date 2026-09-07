@@ -1,3 +1,45 @@
+## V3-R01-FULL：全站整合驗收與正式上線準備（2026-09-07 UTC）
+
+- **任務定位**：V3-R01 為工程整合驗收與發布準備，非科研必經第 21 階段；不計入研究進度分母，不變更研究資料，不重放未授權之外部副作用。
+- **規格基準**：`docs/release/V3-R01/spec-v3-4.0.md`（官方 32 節規格檔，SHA-256 `fc6e857f…`，逐字一致）。
+- **工程發布門禁**（`RELEASE_ENGINEERING_GATES`）：
+  * `INTEGRATION_INVENTORY_VERIFIED`：全站 U01～U20 契約、資料模型、三目標與 Provider 盤點完成。
+  * `CORE_WORKFLOWS_INTEGRATION_ACCEPTED`：無未解 P0/P1 阻塞；前瞻計畫不卡未來結果，回流不重置全站。
+  * `SECURITY_RECOVERY_AND_OUTPUT_ACCEPTED`：權限隔離、不可信輸入防注入、冷備份與隔離還原演練驗證。
+  * `RELEASE_CANDIDATE_READY_AWAITING_OWNER_APPROVAL`：發布候選版已封裝鎖定，停於此處等待平台 Owner 正式部署授權。
+- **契約與模型**（`lib/release-readiness-v3-contract.ts`、`lib/release-readiness-v3-service.ts`）：
+  * `ReleaseScopeManifest`：納管三目標支援（`JOURNAL_SCI_SSCI`、`NSTC_GENERAL`、`MOE_TPR`）、核心能力清單與排除項。
+  * `ReleaseReadinessSnapshot`：schema v3.4.0，固定 commitSha、tree/image digest、環境識別、Gate 評估；`productionDeploymentAuthorized`、`researchStateMutationAuthorized`、`nextExternalActionAuthorized` 恆為 false。
+- **管理端 API**：`/api/admin/release-readiness-v3`（支援 GET 評估狀態與 POST 建立 ReleaseReadinessSnapshot）。
+- **驗收證據（附錄A R01-T001～R01-T080）**：
+  * `scripts/verify-stage-r01-full-80-items.ts`：**78 PASS, 0 FAIL, 2 NOT_RUN**（R01-T058 真實 PDF/DOCX renderer 工具鏈、R01-T061 Playwright 實機 E2E 環境，誠實標示）。
+  * `npx tsc --noEmit`：0 errors。
+  * 歷史迴歸：U19（72/72）、U20（72/72）、U20 Consumer（14/14）全數維持 PASS。
+- **誠實界線**：staging 候選版已就緒；未經明確授權不切換生產流量、不執行正式 DB migration、不發起外部真實投稿或付款。
+- **停止邊界**：達到 `RELEASE_CANDIDATE_READY_AWAITING_OWNER_APPROVAL`，停止並等待發布指示。
+
+## V3-U20-FULL-R2：第二十階段完整規格補強（官方 36 節）建置完成（2026-09-07 UTC）
+
+- **規格基準**：`docs/stage20/spec-v3-4.0.md`（官方 36 節版 626 行；SHA-256 `d056eade…`，與使用者附檔逐字一致）。
+- **契約 v2**（`lib/outcome-management-v3-contract.ts`）：多維度狀態（acceptance/production/visibility/indexing/funding 並存）、ProofRoundEntity／ProofIssueEntity／PublisherQueryEntity／ProofCorrectionPackage／AcceptedArtifactBaseline、PublicationRightsProfile／InvoiceObservation、GrantAwardBaseline／FinancialObservation、ExecutionReentryRequest、OutcomeReportRound、ResearchOutputRecord／DepositWorkOrder、CloseoutScope／ArchiveManifest；§33 **9 Gates**（POST_DECISION_INTAKE…OUTCOME_ARCHIVE_VERIFIED）；§32 **17 官方錯誤碼**（HANDOFF_SCHEMA_UNSUPPORTED…ARCHIVE_INCOMPLETE，R1 舊碼走 LEGACY_OM_ERROR_ALIASES）；§34 完整 `OutcomeManagementSnapshot`（48 組 ref 陣列＋readyGates＋flags＋nextAction＋nextExternalActionAuthorized=false）。
+- **服務 v2**：intake（allowedScope 門）／冪等、accepted baseline、proof issue（科學變更一律標 RETURN_U14_16）、query 需真 artifact、rights/payee 護欄、award/financial（counterpartKey 去重、支出核對）、執行 reentry（不解除 U12）、report round 證據認證、output/deposit/release(embargo 預設不公開)、closeout/archive(restore verified)、新 ActionIntent（不重放送件授權）、Gate predicate、snapshot builder（並存 U19 refs 不覆蓋）。
+- **API**：`outcome-management-v3/{initialize,complete,status,export}` 承接 U19、持久化 stageId=`outcome-management`、flags/gates/nextAction、真實匯出 bytes/hash。
+- **驗收**：`verify-stage20-full-72-items.ts` **對齊官方表 T01–T72 72/72 PASS（5 NOT_RUN**：renderer 版面/PDF、publisher/APC/institution LIVE、Zotero/ORCID/Consensus/Crossref/Repository LIVE、正式 DB migration＋UI、date-renderer toolchain）；`verify-stage20-outcome-consumer-contract.ts` **14/14 PASS**。`npx tsc --noEmit` 全 repo 0 errors；U19 回歸（72/72＋44/44）仍 PASS。
+- **誠實標記**：Accepted≠Published/Indexed、Awarded≠FundsReceived/IRB/Exec；Gate 不只因 AI/欄位非空；embargo 預設不自動公開；next_external_action_authorized=false 恆定；不重放送件授權為 proof/付款/簽約/公開；不臆造必做第 21 段；未部署 Zeabur、未跑正式 DB migration。
+- **停止邊界**：完成 U20 完整版後停止；後續成果總覽／指定案件結案封存／持續追蹤／回原研究模組／新研究 seed。
+
+## V3-U20-FULL：第二十階段「接受／核定後作業與成果管理」建置完成（2026-09-07 UTC）
+
+- **規格基準**：`docs/stage20/spec-v3-4.0.md`（依使用者完整提示詞 8 大節收錄）。
+- **上游 Gate 對照**：`DECISION_VERIFIED_AND_OUTCOME_HANDOFF_READY`（decision=ACCEPTED/GRANTED 且 decisionRecord categorySourceVerified＋postDecisionProcessingAllowed）；僅 tracking ／待核決定→allowPreparation，不自動升正式接受／核定。
+- **U19 快照擴充（向後相容）**：`SubmissionTrackingSnapshot` v1.1 增 `postDecisionProcessingAllowed`、`postDecisionAllowedScopeRefs`、`allowedNextActions`、`nextExternalActionAuthorized=false`（供 U20 無損映射；不影響既有 consumer）。
+- **契約**（`lib/outcome-management-v3-contract.ts`）：OutcomeRoute 三路線、ProofVersion/ProofCheckItem/PublisherQueryItem/CorrectionPackage、ExecutionReentryRequest、FinanceLedgerLine（Decimal 分 + double-count key）、OutcomeReportBlock、RightsEntity（AM/proof/VOR/SUPPLEMENT）、ZoteroRefLine/OrcidLine/ArchiveEntity、OutcomeManagementSnapshot（nextStageId=closure-or-new-study，不隨造第 21 段）、20 個 OM 錯碼。
+- **服務**（`lib/outcome-management-v3-service.ts`）：intake/reer-機制、proof bytes＋受 render 定位、數字更正僅引用 Result Fact（verifyCorrectionSource 強制）、publisher query＋真實修改證據、ExecutionReentry（回既有 cycle、不解除執行條件）、財務 Decimal＋防重複支出（同 key SPENT）、報告重要 claim 需 Execution/Fact/Output 證據、rights/embargo 到期重核（去識別≠可公開）、Zotero 無寫不宣已同步、ORCID 需 api+owner、archive 隔離驗復原、ActionIntent 逐項重新授權（送件授權不可重放為付款/簽約/公開）、computeNextCapability（首頁 CTA）、buildOutcomeManagementSnapshot。
+- **API**：`/api/projects/:projectId/outcome-management-v3/{initialize,complete,status,export}`（承接 U19 snapshot、readiness 門、持久化 stageId=`outcome-management`、真實匯出含 bytes/hash、status 成果總覽）。
+- **驗收**：`scripts/verify-stage20-full-72-items.ts` **71/72 可執行項 PASS，5 NOT_RUN**（renderer PDF 產出、portal LIVE、ORCID/Zotero LIVE、UI 深度、正式 DB migration）；`scripts/verify-stage20-outcome-consumer-contract.ts` **10/10 PASS**。`npx tsc --noEmit` 全 repo 0 errors；U19 回歸（72/72＋44/44）仍 PASS。
+- **誠實標記**：Accepted≠Published/Indexed；Awarded≠FundsReceiveled/IRB/Exec；證明接受/核定需源核；`next_external_action_authorized_as_given=false` 恆定；不自動公開發布/付款/簽約/公開；fixture≠真實成果已完成；未部署 Zeabur、未跑正式 DB migration。
+- **停止邊界**：完成第二十階段後停止；無必做第 21 段。後緒可成果總覽/繼續既有研究/結案歸檔/由使用者啟動新研究。
+
 ## V3-U19-FULL-R2：第十九階段完整規格補強（2026-09-07 UTC）
 
 - **規格基準**：`docs/stage19/spec-v3-4.0.md`（完整 36 節、664 行；R2 收錄整份，SHA-256 `093a9932…`）。
