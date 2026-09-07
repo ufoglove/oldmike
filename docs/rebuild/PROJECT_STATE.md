@@ -1,3 +1,30 @@
+## V3-R03-FULL：真實科研專案導入、首件成果交付與小版本改善（2026-09-07 UTC）
+
+- **任務定位**：真實科研專案導入、首件成果交付與小版本改善工作單；非科研第 21 階段，不加入研究進度分母。本輪目標為「一個真實 Project、一個明確交付成果、一輪必要小修與重驗」，查無缺陷時允許零程式修改（`NO_CODE_CHANGE_REQUIRED`）。
+- **規格基準**：`docs/operations/V3-R03/spec-v3-4.0.md`（官方 32 節規格檔，SHA-256 `68425d32…`，逐字一致）。
+- **承接 R02 上線狀態**：
+  * 上游語義 Gate：`PRODUCTION_OPERATIONAL_HANDOFF_COMPLETE`。
+  * 生產站點正常運行於 `https://research.josephbb0105.com`（Zeabur Deployment `6a9e8835`），不重複 deploy、不重跑 migration、不改動 DNS。
+  * 原 R02 之 `researchStateMutationAuthorized=false`、`submissionPaymentPublicationAuthorized=false` 等嚴格安全旗標保留不變。
+- **六大採用操作門禁**（`R03_ADOPTION_GATES`）：
+  1. `R03_OPERATIONAL_INPUT_VERIFIED`：R02 運行狀態核對完成，上游 false 授權不被本輪改為 true。
+  2. `R03_REAL_WORK_SCOPE_AUTHORIZED`：綁定真實專案目標，禁止靜默改小成果範圍換取 PASS。
+  3. `R03_DELIVERABLE_QUALITY_CHECKED`：產物經來源、數值、引用與格式檢驗，非僅空泛按鈕或摘要。
+  4. `R03_USER_DELIVERABLE_ACCEPTANCE_RECORDED`：有權研究者針對實際 artifact hash 進行可用性審閱與確認。
+  5. `R03_HIGH_PRIORITY_ISSUES_DISPOSITIONED`：無未處置之 P0/P1 阻塞，缺陷轉最小合成 fixture 隔離修復。
+  6. `R03_ADOPTION_EVIDENCE_SAVED`：首件成果清冊、使用紀錄與維護證據完整存證。
+- **核心模型與契約**（`lib/real-project-adoption-v3-contract.ts`、`lib/real-project-adoption-v3-service.ts`）：
+  * `R03WorkMode`：`NORMAL_RESEARCH_USE`、`SCOPED_SERVICE_OBSERVATION`、`ISOLATED_PRODUCT_REPAIR` 三權分立。
+  * `AdoptionWorkOrder`：納管三目標（`JOURNAL_SCI_SSCI`、`NSTC_GENERAL`、`MOE_TPR`）與八類交付意圖（`DeliveryIntent`），`isScopeReducedSilently: false`。
+  * `FirstDeliverableManifest`：實際產物 bytes、sha256、格式與品質狀態（`DRAFT`、`SCIENTIFICALLY_REVIEWED`、`LANGUAGE_QA_PASSED`、`PACKAGE_READY`）嚴格核對。
+  * `RealProjectDeliverySnapshot`：schema v3.4.0；`engineeringProgressNotInResearchDenominator=true`、`submissionPaymentPublicationAuthorized=false`、`unspecifiedProductionChangeAuthorized=false`、`rawResearchFactMutationAuthorized=false`。
+- **管理端 API**：`/api/admin/real-project-adoption-v3`（支援 GET 評估採用狀態與 POST 建立 RealProjectDeliverySnapshot）。
+- **驗收證據（附錄A R03-T01～R03-T48）**：
+  * `scripts/verify-stage-r03-full-48-items.ts`：**46 PASS, 0 FAIL, 2 NOT_RUN**（R03-T28 真人回饋簽名確認、R03-T47 有權研究者最終可用性審閱，誠實標示為待真人驗收）。
+  * `npx tsc --noEmit`：**0 errors**。
+  * 歷史迴歸：R02 64項（62 PASS）、R01 80項（78 PASS）、U19（72/72）、U20（72/72）全數維持綠燈。
+- **安全與停止界線**：首件成果與小修驗收完成後停止。下一步是使用已有成果繼續研究，按真實問題維護，不自動新增科研必經階段。
+
 ## V3-R02-FULL：受控正式上線、上線驗證與營運交接（2026-09-07 UTC）
 
 - **任務定位**：工程發布任務，非科研第 21 階段，不加入研究進度分母。本指令不等於可無條件部署、停站、改 DNS、正式 migration 或對外送件。
