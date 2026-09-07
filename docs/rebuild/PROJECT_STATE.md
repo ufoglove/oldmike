@@ -513,3 +513,30 @@
 - **所在環境與停止邊界**：
   * 本地安全開發容器環境（`/home/node/dev/repo`）；未進行任何正式資料庫遷移或 Zeabur 部署。
   * **本輪第六階段已完整交付並停止，等待使用者指示後續階段。**
+
+## V3-R04-FULL：營運品質監測、AI品質回歸與受控維護完成（2026-09-07 UTC）
+- **任務定位**：使用者另行要求之有限維護工作單，非科研第 21 階段；`engineeringProgressNotInResearchDenominator=true`，不加入研究進度分母，不重新部署，不重做首件研究。
+- **規格基準**：`docs/operations/V3-R04/spec-v3-4.0.md`（v3.4.0，SHA-256 與上游規格檔一致）。
+- **承接上游真實產物**：
+  * R01 `ReleaseReadinessSnapshot`（v3.4.0, 78 PASS）、R02 `ProductionLaunchSnapshot`（v3.4.0, 62 PASS）、R03 `RealProjectDeliverySnapshot`（v3.4.0, 46 PASS, Gate: `FIRST_REAL_DELIVERABLE_ACCEPTED_AND_ADOPTION_REVIEW_COMPLETE`）。
+  * R03 歷史嚴格旗標原樣保留：`rawResearchFactMutationAuthorized=false`、`submissionPaymentPublicationAuthorized=false`、`unspecifiedProductionChangeAuthorized=false`；本輪權限以獨立 `MaintenanceWorkOrder`（scope: `SCOPED_OPERATIONAL_READ`）限制。
+- **核心交付**：
+  * `lib/maintenance-review-v3-contract.ts`：MaintenanceReviewSnapshot schema（`maintenance-review/3.4.0`）、R04WorkMode 五層權限、4 大控制門禁（`R04_INPUT_SCOPE_AND_EVIDENCE_CHECKED` / `R04_QUALITY_CONTROL_PLAN_VALIDATED` / `R04_MAINTENANCE_REVIEW_RECORDED` / `R04_ISSUES_DISPOSITIONED_AND_HANDOFF_SAVED`）。
+  * `lib/maintenance-review-v3-service.ts`：門禁評估、品質指標聚合（零分母保留 N/A、小樣本標 `INSUFFICIENT_OBSERVATION`）、Snapshot 建構（同 ID 異 digest 拒絕）。
+  * `app/api/admin/maintenance-review-v3/route.ts`：管理 API（GET 門禁評估 / POST Snapshot 生成）。
+  * `scripts/verify-stage-r04-full-48-items.ts`：48 項驗收套件；`scripts/verify-r04-consumer-contract.ts`：Consumer 契約與冪等驗證。
+- **完整交付文件**（`docs/operations/V3-R04/`）：README、InputContractMapping、ReuseMap、MaintenanceWorkOrder、MetricDefinitions、QualityPolicy、ProviderAndSourceImpactPolicy、EvaluationSuiteIndex、MaintenanceReviewReport、IssueDisposition、MaintenanceReviewSnapshot-schema、KnownIssues。
+- **驗收證據（附錄A R04-T01～R04-T48）**：
+  * **46 PASS, 0 FAIL, 2 NOT_RUN**（R04-T09 需 staging 故障注入、R04-T47 需 LIVE 第三方連線，誠實標示）。
+  * Consumer contract 驗證 PASS；歷史迴歸：R03（46）、R02（62）、R01（78）、U19/U20 全數維持綠燈；`pnpm tsc --noEmit` 0 errors。
+- **資料庫變更**：migration=NONE（無新增資料表，完全以契約型別與快照保存）。
+- **本次 Maintenance Review 結論**（窗口 2026-09-06T11:24Z～2026-09-07T11:24Z，coverage=FULL_COVERAGE）：
+  * 保存讀回 10/10 OK、匯出 1/1 OK、事實保真 1/1 OK；任務中斷恢復 0/0 標 `INSUFFICIENT_OBSERVATION`；真人採用待研究者最終簽認。
+  * 成本 actual=$0.00、未核帳=$0.00；無 P0/P1 開放事故。
+  * **Patch 狀態：`NO_CODE_CHANGE_REQUIRED`**（無真實產品缺陷，不為交差修碼）。
+  * **Review 處置：`MAINTENANCE_REVIEW_AND_CONTROL_HANDOFF_COMPLETE`**；控制驗證 `PASSED`；營運健康 `WITHIN_CONFIRMED_TARGET`。
+- **排程狀態**：`DRAFT_DISABLED`（新增排程預設關閉；無既有重複 scheduler，未新增收件人與外部通知）。
+- **所在環境與停止邊界**：
+  * 本地安全開發容器環境（`/home/node/dev/repo`，分支 `maintenance/v3-r04-full`）；未進行正式 Zeabur 部署、migration 或 Git push。
+  * 本輪意義僅為指定檢查與控制交接完成，不代表全站永無故障；觀察充分性、排程啟用與 patch 發布另列。
+  * **本輪已完整交付並停止，不自動開啟 R05 或新必經階段；U19/U20 期限與原研究義務不因維護結束而關閉。**
