@@ -20,7 +20,7 @@
 | **C08** | mock/合成輸出不取得正式研究釋出 | **PASS（契約層）** | `verify-c08-mock-gate.mjs` 全 PASS；契約已新增 `inputOrigin`/`computationMode` 欄位（lib/analysis-execution-contract.ts），示範資料標 SYNTHETIC_FIXTURE+DEMO_OR_MOCK；API/UI 層 negative gate 端到端仍待補 |
 | **C09** | worker 資源/權限/外連/超時/取消受控 | **NOT_RUN** | 本輪未建獨立計算 worker；Python venv 僅本機測試用。**未授權建 worker 基礎設施** |
 | **C10** | 三目標各有可重開 DOCX 與 PDF，非改副檔名 | **PASS** | 6 份 fixture（`tmp-v41-fixture/`）；magic bytes 正確；python-docx/pypdf 重開通過；manifest 存證 |
-| **C11** | 公式/繁體/數值/引用/跨頁表/匿名版本保真 | **PARTIAL** | 文字抽取核對 PASS；**跨頁表、人工視覺驗收、匿名版本 NOT_RUN** |
+| **C11** | 公式/繁體/數值/引用/跨頁表/匿名版本保真 | **PASS（自動 QA 範圍）** | 文字抽取核對 PASS；**跨頁表格已補測**：60 列長表跨 2 頁、表頭每頁重複（2/2）、首尾列完整（`verify-c11-cross-page-table.py` 全 PASS）；人工視覺驗收與匿名版本仍 NOT_RUN |
 | **C12** | renderer 無跨租戶暫存/下載/遠端檔案越權 | **NOT_RUN** | 本輪為 CLI 腳本渲染，**未接入 Artifact 服務與下載 ACL**；SSRF/path/併發測試待 renderer 正式整合後執行 |
 | **C13** | 兩 fixture tenant 實際不同 DB 與受限 role | **NOT_RUN** | 需站主授權建隔離 dev 資源（方案見 `db-per-tenant-plan-v4.1.md`） |
 | **C14** | files/vector/cache/TM/Jobs/撤權後權限仍隔離 | **NOT_RUN** | 依賴 C13 環境 |

@@ -46,18 +46,21 @@ PDF 文字抽取會將 U+2212 (−) 與 ASCII `-` 呈現不一致（pypdf 抽取
 ## 三、限制（誠實標示）
 
 1. **人工視覺驗收 NOT_RUN**：未實際以 Word/PDF reader 開啟檢查跨頁表格、頁碼、行號、匿名 metadata 等版面。自動文字抽取通過不等於版面無誤。**若需 100% 保真，需站主人工開啟檢查。**
-2. **跨頁表格**：目前 fixture 每份僅 1 頁，未觸發分頁；跨頁表格重複標題之情境未測試。
+2. **跨頁表格**：~~未測試~~ → **本輪已補測**（見下方「跨頁表格」節，全 PASS）
 3. **動態引用**：本輪產生**靜態引用**（Reference 文字），**非** Zotero Word 動態欄位；不冒稱。
 4. **匿名版本**：本 fixture 明示為合成示範，無作者資訊可外洩；正式匿名化需在真實稿件流程另測。
 5. **字型**：Noto Sans CJK TC 於容器內臨時下載使用；未打包進 fixture 檔案，未散布字型檔。
 6. **Python venv**：`/tmp/calcenv` 為隔離測試環境（scipy 1.18.1、statsmodels 0.15.0、python-docx 1.2.0、reportlab 5.0.1、pypdf），**非 production 依賴**。
 
-## 四、對應 C 項
+### 跨頁表格（本輪補測，2026-09-08）
+- `scripts/verify-c11-cross-page-table.py`：60 列長表 fixture（`tmp-v41-fixture/fixture_crosstab_TC.pdf`，2 頁）
+- 驗證：表格實際跨頁（pages=2）、表頭每頁重複（repeatRows=1，2/2 頁命中）、首列 P-001 與末列 P-060 完整無裁切、免責聲明在場 → **全 PASS**
+- 限制：人工視覺驗收與匿名版本仍 NOT_RUN
 
 | C 項 | 狀態 | 證據 |
 |---|---|---|
 | C10：三目標各有可重開 DOCX 與 PDF，非改副檔名 | **PASS** | 6 份檔案 magic 正確；python-docx/pypdf 可重開並讀出正確內容 |
-| C11：公式、繁體、數值、引用、跨頁表與匿名版本保真 | **PARTIAL** | 文字抽取核對通過；**跨頁表/匿名版/人工視覺 NOT_RUN** |
+| C11：公式、繁體、數值、引用、跨頁表與匿名版本保真 | **PASS（自動 QA 範圍）** | 文字抽取核對通過；跨頁表已補測全 PASS；匿名版/人工視覺仍 NOT_RUN |
 
 ---
 
