@@ -118,3 +118,44 @@
 
 **准用範圍**：本輪為開發/測試修補；未部署、未 migration 上線、未新增費用、未推送遠端。憑證撤銷仍待站主操作。
 **後續**：三（真實運算）、四（DOCX/PDF）、五（獨立 DB 方案）、六（憑證/發布）、七（C01–C18）依指示分批推進；完成後停止，不新增建站階段。
+
+## 7. V4.1 收尾：真實運算、DOCX/PDF、DB 方案、憑證狀態（2026-09-08, commits c3d40f08 起續）
+
+依站主 2026-09-08 完整指示（OpenClaw_V4_Acceptance_Correction_Core_Gaps.md）完成：
+
+### 真實運算（C04/C05/C06/C07）
+- `lib/statistical-computation-engine.ts` 修復 Welch/ANCOVA CI 之 t 分位數近似（改精確 bisection）；對 scipy 1.18.1 / statsmodels 0.15.0 21 項全 PASS（`scripts/verify-stat-engine-reference.mjs`）。
+- 方法分類矩陣：`docs/operations/V3-R04/method-classification-matrix-v4.1.md`（A 類 9、D 類 3、NOT_IMPLEMENTED 1）。`analysis-execution-service` 與 `formal-execution-service` 之示範資料標 D 類，不得作正式結果。
+- Python venv `/tmp/calcenv`（scipy+statsmodels）僅隔離測試用，非 production 依賴。
+
+### DOCX/PDF（C10/C11）
+- `scripts/render-fixtures-v41.py`（python-docx 1.2.0 + reportlab 5.0.1 + Noto Sans CJK TC）產出 6 份 fixture：JOURNAL_EN/NSTC_TC/MOE_TC 各 DOCX+PDF。
+- QA 報告：`docs/operations/V3-R04/docx-pdf-renderer-qa-v4.1.md`（C10 PASS；C11 PARTIAL—跨頁表/匿名版/人工視覺 NOT_RUN）。
+- 位置：`tmp-v41-fixture/`；manifest 存證。
+
+### 獨立 DB 方案（C02/C13/C14 待授權）
+- `docs/operations/V3-R04/db-per-tenant-plan-v4.1.md`：方案 A（同 instance DB-per-tenant）與 B（Neon project-per-tenant）比較；成本 UNKNOWN；遷移/回復規劃。**未建資源、未搬資料。**
+
+### 憑證（C17）
+- `docs/operations/V3-R04/credential-status-v4.1.md`：本地掃描 PASS（憑證不進 Git）；撤銷/輪替待站主操作，狀態 `CREDENTIAL_STATUS_UNVERIFIED`。
+
+### C01–C18 定向驗收
+- `docs/operations/V3-R04/c01-c18-acceptance-v4.1.md`：PASS 7 / PARTIAL 5 / NOT_RUN 5 / N/A 1；發布候選狀態集填寫完畢。
+
+### 發布候選狀態
+- `PATCH_READY_AWAITING_OWNER_RELEASE_APPROVAL` = YES（本地 commits 4c60fbf/9e957ca/c3d40f08，未推送）
+- production 未更新（本地領先 origin 94 commits；origin 最新 6e07f25/V2.zip）
+- 未授權不 push、不建雲端資源、不搬資料。
+
+### 待站主核准（集中）
+1. 隔離 dev 建 2 tenant 2 DB（C13/C14）
+2. staging 還原演練（C03）
+3. 撤銷/輪替已曝露憑證（C17）
+4. Neon 成本查閱（方案 B 可行性）
+5. tenant 隔離單位與方案 A/B 裁決
+6. UI 標示修訂
+7. 正式部署（R02）
+8. V2.zip 審查
+
+### 准用範圍
+本輪完成可獨立執行之修補與存證；正式可用範圍為：TypeScript A 類統計引擎（Welch/ANCOVA/Holm/desc/correlation/sample-size）＋合成 fixture 三目標 DOCX/PDF。仍阻擋：獨立 DB、worker 基礎設施、還原演練、憑證撤銷、production 部署。未部署內容：本地全部 94+3 commits。
