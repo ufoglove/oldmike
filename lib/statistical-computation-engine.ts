@@ -123,6 +123,19 @@ export type WelchTestResult = {
   isSignificant: boolean;
 };
 
+// Inverse Student-t CDF via bisection on two-tailed p (exact quantile, replaces 1.96/2.0 approximations)
+export function studentTCriticalTwoTailed(confidenceLevel: number, df: number): number {
+  if (!(confidenceLevel > 0 && confidenceLevel < 1) || !(df > 0)) throw new Error("INVALID_T_QUANTILE_PARAMS");
+  const targetP = 1 - confidenceLevel;
+  let lo = 0, hi = 1e6;
+  for (let i = 0; i < 200; i++) {
+    const mid = (lo + hi) / 2;
+    const p = studentTwoTailedPValue(mid, df);
+    if (p > targetP) lo = mid; else hi = mid;
+  }
+  return (lo + hi) / 2;
+}
+
 export function calculateWelchTTest(group1: number[], group2: number[], confidenceLevel = 0.95): WelchTestResult {
   const d1 = calculateDescriptiveStats(group1);
   const d2 = calculateDescriptiveStats(group2);
@@ -145,8 +158,8 @@ export function calculateWelchTTest(group1: number[], group2: number[], confiden
 
   const pValue = studentTwoTailedPValue(tStatistic, df);
 
-  // Critical t approximation for CI (standard 1.96 for large df, adjusted for small df)
-  const critT = 2.0 + 2.0 / df;
+  // Exact critical t for CI (bisection on regularized incomplete beta), not large-sample 1.96/2.0 approx
+  const critT = studentTCriticalTwoTailed(confidenceLevel, df);
   const margin = critT * seDiff;
   const ciLower = Number((meanDiff - margin).toFixed(3));
   const ciUpper = Number((meanDiff + margin).toFixed(3));
@@ -265,7 +278,9 @@ export function calculateAncovaModel(cases: Array<{ pre: number; post: number; i
   const pVal = studentTwoTailedPValue(tVal, dfRes);
   const r2 = 1 - ssRes / ssTotal;
 
-  const margin = 2.0 * seB1; // approx 95% CI
+  // Exact 95% CI: t quantile at dfRes, not fixed 2.0 multiplier
+  const critT = studentTCriticalTwoTailed(0.95, dfRes);
+  const margin = critT * seB1;
   const ciLower = Number((b[1] - margin).toFixed(3));
   const ciUpper = Number((b[1] + margin).toFixed(3));
 

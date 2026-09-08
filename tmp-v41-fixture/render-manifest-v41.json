@@ -1,0 +1,54 @@
+{
+  "generated_at": "2026-09-08T05:29:09.808170Z",
+  "renderer": {
+    "docx": "python-docx 1.2.0",
+    "pdf": "reportlab 5.0.1",
+    "font": "Noto Sans CJK TC (system, not redistributed)"
+  },
+  "fixture_data_source": "verify-stat-engine-reference.mjs (scipy-validated reference values)",
+  "disclaimer": "All fixture documents are SYNTHETIC. Not real submissions. No IRB/consent/outcome claimed.",
+  "files": [
+    {
+      "goal": "JOURNAL_EN",
+      "format": "docx",
+      "path": "/home/node/dev/repo/tmp-v41-fixture/fixture_JOURNAL_EN.docx",
+      "bytes": 37327,
+      "sha256": "8a22fdb2a7000ac30d4792f8b45a9fdd021634466d558089377537ca57e03bf9"
+    },
+    {
+      "goal": "JOURNAL_EN",
+      "format": "pdf",
+      "path": "/home/node/dev/repo/tmp-v41-fixture/fixture_JOURNAL_EN.pdf",
+      "bytes": 12733,
+      "sha256": "5332750b3eb49b4b8d18b9e572bbae11d5ec6b7192e40c8891e493a1dd686b07"
+    },
+    {
+      "goal": "NSTC_TC",
+      "format": "docx",
+      "path": "/home/node/dev/repo/tmp-v41-fixture/fixture_NSTC_TC.docx",
+      "bytes": 37572,
+      "sha256": "464cc455618b262ed9664180d24975b2aff9c1c97e9427fc56477d45acdaa333"
+    },
+    {
+      "goal": "NSTC_TC",
+      "format": "pdf",
+      "path": "/home/node/dev/repo/tmp-v41-fixture/fixture_NSTC_TC.pdf",
+      "bytes": 39138,
+      "sha256": "db64fd29610bc25176a19e9fb8250db9dc9cfd139040167415b7b0fd355fd856"
+    },
+    {
+      "goal": "MOE_TC",
+      "format": "docx",
+      "path": "/home/node/dev/repo/tmp-v41-fixture/fixture_MOE_TC.docx",
+      "bytes": 37532,
+      "sha256": "ea946823363526fc21078c42c22d09a25d27a2cd5ae1b75ee7047eaa1623d9b1"
+    },
+    {
+      "goal": "MOE_TC",
+      "format": "pdf",
+      "path": "/home/node/dev/repo/tmp-v41-fixture/fixture_MOE_TC.pdf",
+      "bytes": 38284,
+      "sha256": "897f7bbe52b5050a6fef344d0b6ac49dd9dc32e6fc171637bddcb849f1dea085"
+    }
+  ]
+}
