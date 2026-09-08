@@ -1,6 +1,12 @@
 import "server-only";
 
-import { executeOpenClawChatCompletion } from "./openclaw.ts";
+import {
+  executeOpenClawChatCompletion,
+  tryPrimaryOpenAi,
+  tryTokenPlanOpenAi,
+  resolveDefaultOpenClawOperationRoute,
+  type OpenClawChatCompletionProtocolResult,
+} from "./openclaw.ts";
 import { resolveModelRoute } from "./model-route-catalog.ts";
 import { sha256CanonicalPortable as sha256Canonical } from "./canonical-sha256.ts";
 import { oneClickInspirationMessages } from "./assist-prompts.ts";
@@ -77,18 +83,51 @@ export async function executeOneClickInspiration(
   // 2) generate with one automatic retry on contract rejection (fresh session key)
   const sessionBase = `one-click-inspiration:${sha256Canonical({ idempotencyKey: request.idempotencyKey }).slice(0, 32)}`;
   let lastFailure: { code: string; stage: string; recoverableFields: string[] } | undefined;
+  const baseRoute = {
+    ...resolveModelRoute({ modeProfile: "AUTO", operation: "ACADEMIC_LANGUAGE" }),
+    operation: "ONE_CLICK_INSPIRATION" as const,
+    timeoutMs: 60_000,
+  };
+
   for (let attempt = 0; attempt < 2; attempt += 1) {
     let content: string;
+    const sessionKey = attempt === 0 ? sessionBase : `${sessionBase}:retry${attempt}`;
+    const messages = oneClickInspirationMessages(request, observations as never);
+
     try {
-      const result = await executeOpenClawChatCompletion({
-        messages: oneClickInspirationMessages(request, observations as never),
-        sessionKey: attempt === 0 ? sessionBase : `${sessionBase}:retry${attempt}`,
-        operation: "ONE_CLICK_INSPIRATION",
-        route: { ...resolveModelRoute({ modeProfile: "AUTO", operation: "ACADEMIC_LANGUAGE" }), operation: "ONE_CLICK_INSPIRATION" },
-        baseUrl: process.env.OPENCLAW_BASE_URL,
-        bearerToken: process.env.OPENCLAW_GATEWAY_TOKEN,
+      // 優先調用 Vectide Coding Plan (DeepSeek V4 Pro)
+      let result: OpenClawChatCompletionProtocolResult | null = null;
+      const codingAttempt = await tryPrimaryOpenAi({
+        messages,
+        sessionKey,
+        route: baseRoute,
         signal: options.signal,
       });
+
+      if (codingAttempt.kind === "success") {
+        result = { kind: "success", content: codingAttempt.content };
+      } else {
+        const tokenAttempt = await tryTokenPlanOpenAi({
+          messages,
+          sessionKey,
+          route: baseRoute,
+          signal: options.signal,
+        });
+        if (tokenAttempt.kind === "success") {
+          result = { kind: "success", content: tokenAttempt.content };
+        } else {
+          result = await executeOpenClawChatCompletion({
+            messages,
+            sessionKey,
+            operation: "ONE_CLICK_INSPIRATION",
+            route: baseRoute,
+            baseUrl: process.env.OPENCLAW_BASE_URL,
+            bearerToken: process.env.OPENCLAW_GATEWAY_TOKEN,
+            signal: options.signal,
+          });
+        }
+      }
+
       if (result.kind === "proven-not-submitted") {
         throw new OneClickInspirationError(`research_generation_${result.code}`, "SUBMIT", 503, ["researchFocus"], { reasonEnum: "PROVIDER_NOT_CONFIGURED", elapsedBucket: "NOT_STARTED", providerAttemptClass: "NOT_SUBMITTED" });
       }

@@ -109,10 +109,57 @@ export function evidenceMessages(input: { domain: string; direction: string; mon
 }
 
 
-export function oneClickInspirationMessages(request: { idempotencyKey?: string; researchFocus?: string; domain?: string; outputTrack?: string }, observations: unknown[]): { role: "system" | "user"; content: string }[] {
+export function oneClickInspirationMessages(request: { idempotencyKey?: string; researchFocus?: string; domain?: string; outputTrack?: string; researchDomains?: string[]; researchGoal?: string }, observations: unknown[]): { role: "system" | "user"; content: string }[] {
+  const schemaDescription = `Return EXACTLY one JSON object matching this schema:
+{
+  "judgment": "綜合評析與整體研究方向建議（字數 100-500 字）",
+  "evidenceStatus": "UNVERIFIED",
+  "evidenceNote": "AI 自主評估說明，尚未經外部即時文獻查證",
+  "candidates": [
+    {
+      "candidateId": "inspiration_1",
+      "titleZh": "中文題目",
+      "titleEn": "English Title",
+      "researchQuestion": "核心研究問題",
+      "literatureGap": "文獻缺口與未解之謎",
+      "innovation": "研究創新點與切入視角",
+      "theory": "理論基礎或作用機制",
+      "method": "研究設計與方法（含樣本、資料蒐集、分析方式）",
+      "feasibility": "可行性評估與執行條件",
+      "venue": "建議發表或申請目標（如 SSCI 期刊或國科會學門）",
+      "score": 85
+    }
+  ],
+  "top3": [
+    {
+      "candidateId": "inspiration_1",
+      "role": "PRIORITY",
+      "reason": "推薦理由（最值得優先執行）",
+      "pros": ["優勢1", "優勢2"],
+      "risks": ["風險1", "風險2"]
+    }
+  ]
+}
+RULES:
+1. "candidates" must contain between 3 and 10 candidates with IDs "inspiration_1", "inspiration_2", ...
+2. Every candidate MUST provide non-empty strings for: titleZh, titleEn, researchQuestion, literatureGap, innovation, theory, method, feasibility, venue, and score (integer 0-100).
+3. "top3" must contain entries corresponding to candidates in candidates list. Role must be "PRIORITY", "FASTEST", or "PROJECT_SCALE".
+4. Output ONLY the raw JSON object, no Markdown code block, no backticks, no explanatory prose before or after.`;
+
   return [
-    { role: "system", content: "You are the one-click inspiration engine inside the research portal. Generate three distinct research candidates from the supplied context. Never fabricate sources or citations; evidence status must stay UNVERIFIED unless a real source is provided. Keep output as plain JSON matching the required envelope." },
-    { role: "user", content: JSON.stringify({ request: { idempotencyKey: request?.idempotencyKey ?? null, researchFocus: request?.researchFocus ?? null, domain: request?.domain ?? null, outputTrack: request?.outputTrack ?? null }, observations: observations ?? [] }) },
+    {
+      role: "system",
+      content: `You are Old Mike, a senior cross-disciplinary research architect and inspiration engine. ${schemaDescription}`,
+    },
+    {
+      role: "user",
+      content: JSON.stringify({
+        researchFocus: request?.researchFocus || "",
+        researchGoal: request?.researchGoal || "AUTO",
+        researchDomains: request?.researchDomains || [],
+        observations: observations ?? [],
+      }),
+    },
   ];
 }
 

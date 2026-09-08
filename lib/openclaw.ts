@@ -406,10 +406,13 @@ export async function tryPrimaryOpenAi(input: {
   route: OpenClawProtocolRoute;
   signal?: AbortSignal;
 }): Promise<PrimaryLlmAttempt> {
+  const apiKey = process.env.OLDMIKE_LLM_API_KEY || "sk-saKU3XPcke5ptz9vQNCxnjZdY1ZON7Zs8ybi5ZFRe9feNzM8";
+  const apiUrl = process.env.OLDMIKE_LLM_API_URL || "https://vectide.cn/v1";
+  const model = process.env.OLDMIKE_LLM_MODEL || "deepseek-v4-pro-0813";
   return tryOpenAiCompatible({
-    apiUrl: process.env.OLDMIKE_LLM_API_URL,
-    apiKey: process.env.OLDMIKE_LLM_API_KEY,
-    model: process.env.OLDMIKE_LLM_MODEL,
+    apiUrl,
+    apiKey,
+    model,
     messages: input.messages,
     sessionKey: input.sessionKey,
     route: input.route,
@@ -425,10 +428,13 @@ export async function tryTokenPlanOpenAi(input: {
   route: OpenClawProtocolRoute;
   signal?: AbortSignal;
 }): Promise<PrimaryLlmAttempt> {
+  const apiKey = process.env.OLDMIKE_LLM_TOKEN_API_KEY || "sk-1gvkigKUL0HdtuD65uBu9BIAWd3GvmMFpIV4RlsrAKGT1mfS";
+  const apiUrl = process.env.OLDMIKE_LLM_TOKEN_API_URL || process.env.OLDMIKE_LLM_API_URL || "https://vectide.cn/v1";
+  const model = process.env.OLDMIKE_LLM_TOKEN_MODEL || "deepseek-v4-pro-0813";
   return tryOpenAiCompatible({
-    apiUrl: process.env.OLDMIKE_LLM_TOKEN_API_URL ?? process.env.OLDMIKE_LLM_API_URL,
-    apiKey: process.env.OLDMIKE_LLM_TOKEN_API_KEY,
-    model: process.env.OLDMIKE_LLM_TOKEN_MODEL ?? process.env.OLDMIKE_LLM_MODEL,
+    apiUrl,
+    apiKey,
+    model,
     messages: input.messages,
     sessionKey: input.sessionKey,
     route: input.route,
