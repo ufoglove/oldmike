@@ -99,8 +99,9 @@
    - [x] B-1~B-3：挑選 `academic-research-skills`（CC BY-NC 4.0）之引用校驗與 `claude-scholar`（MIT）之筆記架構，建立受控 Adapter（`lib/task-capability-resolver.ts`、`lib/task-capability-adapters.ts`），接入現有 `ProjectWorkOrder`，契約測試全部通過（`verify-task-capability-adapters.mjs`）。
    - [x] B-4：更新清冊狀態至 `PARTIAL_ADAPTED`，嚴格落實商業租戶授權阻擋與非覆寫原則。
 3. **批次 C（使用者核心流程修補）**：
-   - 落實 `AUTO_DRAFT_FINAL_REVIEW` 集中審閱模式，減少逐段彈窗。
-   - 串接 Telegram 入口與網站 Job 隊列之冪等性。
+   - [x] C-1：落實 `AUTO_DRAFT_FINAL_REVIEW` 集中審查契約（`lib/concentrated-review-contract.ts`），支援自動草稿產出、例外分類與審核門禁阻擋。
+   - [x] C-2：串接 Telegram 與網站共通 Job 隊列（`lib/telegram-job-gateway-contract.ts`、`lib/telegram-job-gateway-service.ts`），實作基於 `updateId` + `chatId` 之雙端 Idempotency 防護。
+   - [x] C-3~C-4：契約測試全數通過（`verify-batch-c-contracts.mjs`），tsc 0 error，完成狀態存證。
 4. **批次 D（完整證據與釋出審閱）**：
    - 逐項執行 24 項驗收並產出真實報告。
    - 提交正式發布候選與審查報告，等待站主明確發布指示。
