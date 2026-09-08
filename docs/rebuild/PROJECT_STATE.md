@@ -96,8 +96,8 @@
    - [x] A-3：Zeabur 線上部署對齊報告（`zeabur-alignment-report-a3.md`）
    - [x] A-4：全站整合現況更新（`PROJECT_STATE.md`）
 2. **批次 B（選擇性安裝與 Adapter）**：
-   - 挑選具備清楚 License 且無外部衝突之核心 Skills（如 `academic-research-skills` 的引用校驗、`claude-scholar` 的筆記方法）。
-   - 建立 Adapter 接入現有 `Research Work Order`，杜絕第三方套件建立第二套狀態機。
+   - [x] B-1~B-3：挑選 `academic-research-skills`（CC BY-NC 4.0）之引用校驗與 `claude-scholar`（MIT）之筆記架構，建立受控 Adapter（`lib/task-capability-resolver.ts`、`lib/task-capability-adapters.ts`），接入現有 `ProjectWorkOrder`，契約測試全部通過（`verify-task-capability-adapters.mjs`）。
+   - [x] B-4：更新清冊狀態至 `PARTIAL_ADAPTED`，嚴格落實商業租戶授權阻擋與非覆寫原則。
 3. **批次 C（使用者核心流程修補）**：
    - 落實 `AUTO_DRAFT_FINAL_REVIEW` 集中審閱模式，減少逐段彈窗。
    - 串接 Telegram 入口與網站 Job 隊列之冪等性。

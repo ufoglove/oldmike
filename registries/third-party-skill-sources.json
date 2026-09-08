@@ -13,10 +13,10 @@
       "id": "academic-research-skills",
       "candidate_source": "https://github.com/Imbad0202/academic-research-skills",
       "vendored_location": "skills/auto-empirical/24-Imbad0202-academic-research-skills",
-      "license": "UNREVIEWED",
-      "commit": "UNPINNED",
-      "status": "SOURCE_ONLY",
-      "notes": "candidate for citation existence / claim support / writing & self-review methods"
+      "license": "CC BY-NC 4.0 (README-original.md)",
+      "commit": "v2.9-curated",
+      "status": "PARTIAL_ADAPTED",
+      "notes": "citation verification capability adapted via TaskCapabilityResolver (ars-citation-verification). Restricted to non-commercial research use."
     },
     {
       "id": "research-paper-writing-skills",
@@ -32,9 +32,9 @@
       "candidate_source": "https://github.com/Galaxy-Dawn/claude-scholar",
       "vendored_location": "skills/claude-scholar/",
       "license": "PARTIAL (obsidian-skills vendored from kepano/obsidian-skills commit bb9ec95e1b59c3471bd6fd77a78a4042430bfac3, MIT per UPSTREAM-LICENSE.txt; other sub-skills UNREVIEWED)",
-      "commit": "PARTIAL_PINNED (obsidian only)",
-      "status": "SOURCE_ONLY",
-      "notes": "literature notes / citation verification / self-review; Obsidian core must not replace site memory; Nature module dedupe vs nature-skills"
+      "commit": "PARTIAL_PINNED (obsidian: bb9ec95e1b59c3471bd6fd77a78a4042430bfac3)",
+      "status": "PARTIAL_ADAPTED",
+      "notes": "structured research note formatting adapted via TaskCapabilityResolver (cs-obsidian-project-vault). No site memory overwrite."
     },
     {
       "id": "ai-research-skills",
