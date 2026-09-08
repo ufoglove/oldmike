@@ -146,20 +146,28 @@
 
 ---
 
-## 七、成本假設（UNKNOWN 標示）
+## 七、成本假設（2026-09-08 已查證官方頁面）
 
-| 項目 | 狀態 |
-|---|---|
-| Neon 定價 | **UNKNOWN**（本檔不杜撰） |
-| Neon 免費方案 project 數上限 | **UNKNOWN** |
-| Neon region 支援 | **UNKNOWN**（需確認現有 staging 所在區域是否支援 target 方案） |
-| Neon compute hours / storage 計費方式 | **UNKNOWN** |
-| Self-host 成本 | 無新增雲端費用，但需站主確認既有基礎設施是否足夠 |
+**查證來源**：https://neon.com/pricing 與 https://neon.com/use-cases/database-per-tenant（2026-09-08 UTC 取得）
 
-**請站主查閱**：
-- https://neon.com/pricing
-- https://neon.com/use-cases/database-per-tenant
-- 現有 Neon org 之 plan/quota/region
+### Neon 計費模型（官方）
+- **三方案**：Free（$0，永久，非試用）／Launch（用量計價）／Scale（用量計價）
+- **方案以 organization 為單位**；一帳號可屬多 org
+- **CU（Compute Unit）**：約 4 GB RAM + CPU + SSD；計價以 **CU-hour**（compute size × 執行時數）
+- **Scale-to-zero**：閒置自動停機，停機期間 **0 CU-hour**；Free 方案 always-on
+- **計量單位**：CU-hour、GB-month（storage）、branch-month（額外分支）
+- 付費方案無月最低消費；發票 < $0.50 不收
+- 官方明確支援 **database-per-tenant** 模式：每 customer 獨立 Neon project，API 自動化 provisioning，單一工程師可管理數千 tenant，支援 per-tenant 獨立 rollback
+
+### 對方案 B 的意義
+| 項目 | 官方資訊 | 對本站估計 |
+|---|---|---|
+| Free 方案 | $0，project 數有上限（官方頁面未列具體數字，需登入 console 確認） | 適合 fixture 驗證（C13/C14），**可能不適合正式多租戶** |
+| Launch/Scale | 用量計價、無月費 | 費用隨 tenant 數 × compute hours 線性/分佈成長；低用量 tenant 因 scale-to-zero 成本可低 |
+| project 數上限 | **需登入 console 確認**（方案別而定） | 站主需以現有 org 方案查閱 |
+| region | 需確認現有 staging 所在區域 | 不影響本檔規劃 |
+
+**結論**：Neon 官方**支援** database-per-tenant（方案 B），計費為用量制且 scale-to-zero 可壓低低用量成本。**實際月費仍取決於站主 org 方案與 tenant 用量**，本檔仍不杜撰具體金額；建議站主以 console 之現有方案頁確認 project 配額後再裁決方案 A/B。
 
 ---
 

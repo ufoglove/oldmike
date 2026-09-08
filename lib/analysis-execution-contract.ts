@@ -48,6 +48,8 @@ export type AnalysisWorkOrder = {
 // -------------------------------------------------------------
 // §9 Analysis Run Ledger & Compute Provenance
 // -------------------------------------------------------------
+export type InputOrigin = "FORMAL_RESEARCH" | "PILOT" | "SYNTHETIC_FIXTURE" | "PUBLIC_REFERENCE";
+export type ComputationMode = "VERIFIED_ALGORITHM" | "EXPERIMENTAL_ALGORITHM" | "DEMO_OR_MOCK";
 export type StatisticalEngineType = "DETERMINISTIC_ENGINE_V1" | "SCIPY_STATSMODELS_ADAPTER";
 
 export type AnalysisRun = {
@@ -56,6 +58,9 @@ export type AnalysisRun = {
   targetRqRef: string;
   methodName: string; // e.g. "Two-Sample Welch t-test", "ANCOVA Linear Model"
   engineType: StatisticalEngineType;
+  /** 資料來源類別（站主文件 3.1）：DEMO_OR_MOCK 不得釋出為正式 Result Facts */
+  inputOrigin: InputOrigin;
+  computationMode: ComputationMode;
   inputDatasetHash: string;
   analyzedSampleN: number;
   degreesOfFreedom: number;

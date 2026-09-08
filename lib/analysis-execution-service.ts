@@ -79,6 +79,8 @@ export function buildAnalysisExecutionWorkspaceFromStage13(params: {
   const analysisRuns: AnalysisRun[] = [
     {
       runId: "run_welch_rt_t1",
+      inputOrigin: "SYNTHETIC_FIXTURE",
+      computationMode: "DEMO_OR_MOCK",
       targetRqRef: "RQ-01",
       methodName: "Two-Sample Welch t-test (T1 Reaction Time Diff)",
       engineType: "DETERMINISTIC_ENGINE_V1",
@@ -97,6 +99,8 @@ export function buildAnalysisExecutionWorkspaceFromStage13(params: {
     },
     {
       runId: "run_ancova_rt_baseline_controlled",
+      inputOrigin: "SYNTHETIC_FIXTURE",
+      computationMode: "DEMO_OR_MOCK",
       targetRqRef: "RQ-01",
       methodName: "ANCOVA Linear Model (T1 RT ~ Treatment + T0 Baseline)",
       engineType: "DETERMINISTIC_ENGINE_V1",

@@ -65,10 +65,14 @@ git log --all -p | grep -iE "ghp_[A-Za-z0-9]{36}|github_pat_|AKIA[0-9A-Z]{16}|BE
 # 2) 視情況 filter-repo / BFG 清理歷史（需協調，不逕 force-push）
 ```
 
-### 3.3 遠端 repo（origin/main）狀態
-- 遠端目前只有 `6e07f25`（V2.zip 上傳）
-- **V2.zip 內容是否含敏感檔**：**UNKNOWN**（本輪未解包審查，屬站主文件第一節「安全解包」範圍）
-- **建議**：站主確認 V2.zip 內是否含 .env / token / DSN / 私稿
+### 3.3 遠端 repo（origin/main）狀態 — **本輪已完成審查**
+- 遠端最新 `6e07f25`（V2.zip，11.6 MB，957 entries）已於隔離環境安全解包審查（2026-09-08）
+- **安全檢查**：無路徑穿越風險（2 筆 `[...all]` 為 Next.js catch-all 路由語法，非實際穿越）、無 symlink、無超大檔案
+- **敏感內容掃描**：真實憑證（ghp_/AKIA/private key/Neon DSN/OpenAI sk/Zeabur PAT）**0 筆命中**；真實 DSN 0 筆
+- `.env.example` 僅空值模板（`DATABASE_URL=`、`BETTER_AUTH_SECRET=` 空）；**無實際 `.env`**
+- SQL 檔皆為 fixture/bootstrap 用途（m1a-c1 測試 fixtures），非資料 dump
+- **與現站關係**：V2/research-portal 為較舊版本（與現 repo 差異 404 處，現站多出 v3 系列路由），可追溯但非當前版本
+- **結論**：V2.zip **未發現敏感檔案或真實憑證**，但屬過時版本；建議站主評估是否自遠端移除以減少混淆
 
 ---
 

@@ -17,7 +17,7 @@
 | **C05** | 核心方法對參考值通過數值容差 | **PASS** | `verify-stat-engine-reference.mjs` 21 項全 PASS（scipy 1.18.1 / statsmodels 0.15.0 對照） |
 | **C06** | 修改輸入影響結果；失敗/缺失不被掩蓋 | **PASS** | 同上腳本：input sensitivity + near-null effect + zero-variance rejected + n<4 rejected |
 | **C07** | 缺 R 不阻擋已驗證 Python；R 專屬標 UNSUPPORTED | **PASS** | TypeScript 引擎（A 類）通過 scipy 對照；Rscript 未安裝標 UNSUPPORTED；Python scipy/statsmodels 於隔離 venv 已驗證 |
-| **C08** | mock/合成輸出不取得正式研究釋出 | **PARTIAL** | 方法分類已寫；**negative test（後端擋 D/E 類輸出進 Result Facts）未實作**，待後續補 |
+| **C08** | mock/合成輸出不取得正式研究釋出 | **PASS（契約層）** | `verify-c08-mock-gate.mjs` 全 PASS；契約已新增 `inputOrigin`/`computationMode` 欄位（lib/analysis-execution-contract.ts），示範資料標 SYNTHETIC_FIXTURE+DEMO_OR_MOCK；API/UI 層 negative gate 端到端仍待補 |
 | **C09** | worker 資源/權限/外連/超時/取消受控 | **NOT_RUN** | 本輪未建獨立計算 worker；Python venv 僅本機測試用。**未授權建 worker 基礎設施** |
 | **C10** | 三目標各有可重開 DOCX 與 PDF，非改副檔名 | **PASS** | 6 份 fixture（`tmp-v41-fixture/`）；magic bytes 正確；python-docx/pypdf 重開通過；manifest 存證 |
 | **C11** | 公式/繁體/數值/引用/跨頁表/匿名版本保真 | **PARTIAL** | 文字抽取核對 PASS；**跨頁表、人工視覺驗收、匿名版本 NOT_RUN** |
@@ -26,7 +26,7 @@
 | **C14** | files/vector/cache/TM/Jobs/撤權後權限仍隔離 | **NOT_RUN** | 依賴 C13 環境 |
 | **C15** | 索引服務 200 錯誤 body 不算成功；成果真保存 | **PARTIAL** | 現有契約區分 UNAVAILABLE/NOT_FOUND（#8 PASS）；**live/mock 分列 + UI 讀回未重驗** |
 | **C16** | 研究agent能採用正確 Skill 與工具；鎖定保護 | **PARTIAL** | registry + adapter 契約通過；**runtime 端到端 Job trace 未重驗**（Skills 全部 SOURCE_ONLY） |
-| **C17** | 憑證與備份不進 Git/log；曝露處理真實 | **PARTIAL** | 本地掃描 PASS；**撤銷/輪替待站主操作**；狀態 `CREDENTIAL_STATUS_UNVERIFIED`（`credential-status-v4.1.md`） |
+| **C17** | 憑證與備份不進 Git/log；曝露處理真實 | **PARTIAL** | 本地掃描 + **Git 全 history 掃描（0 筆真實憑證命中；DSN 僅 fixture）** + **V2.zip 隔離解包審查（0 筆敏感檔、無真實 .env）**；撤銷/輪替待站主操作，狀態 `CREDENTIAL_STATUS_UNVERIFIED`（`credential-status-v4.1.md`） |
 | **C18** | local/remote/candidate/production 版本不混報 | **PASS** | 本地 main 領先 origin/main 94 commits；origin 最新 `6e07f25`；**未授權不 push/deploy**；release mapping 見下節 |
 
 ---
