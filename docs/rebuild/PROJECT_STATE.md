@@ -105,3 +105,16 @@
 4. **批次 D（完整證據與釋出審閱）**：
    - 逐項執行 24 項驗收並產出真實報告。
    - 提交正式發布候選與審查報告，等待站主明確發布指示。
+
+## 6. V4.1 驗收缺口修正（2026-09-08，Commit 4c60fbf）
+
+站主指出 Batch D-1 驗收統計不實（20 PASS + 1 PARTIAL + 2 BLOCKED ≠ 表列實況）。經逐列重核：
+
+- 原報告錯誤屬實：標記分母/分子不一致（實為 22 PASS 標記）、備份表數 359→實為 361、#11/#17 與 PROJECT_STATE 原標 PARTIAL 不一致卻升 PASS、#18 分類不精確、#19/#21 LIVE 證據不足。
+- 修訂清冊：`docs/operations/V3-R04/acceptance-suite-v4.1-correction.md`（ID 1–24 不變）。
+- 程式統計：`scripts/tally-acceptance-v4.1.mjs` → **PASS 18 / PARTIAL 5 (1,11,17,18,23) / BLOCKED 1 (4)**，輸出可重現。
+- 環境實況：無 Rscript、Python 有但缺 scipy/statsmodels、無 pandoc；匯出僅 json/manifest/markdown，**無 DOCX/PDF 能力**。
+- 遠端實況：本地 main 領先 origin/main **94 commits**；origin 最新為 `6e07f25`（V2.zip）。**未授權不推送。**
+
+**准用範圍**：本輪為開發/測試修補；未部署、未 migration 上線、未新增費用、未推送遠端。憑證撤銷仍待站主操作。
+**後續**：三（真實運算）、四（DOCX/PDF）、五（獨立 DB 方案）、六（憑證/發布）、七（C01–C18）依指示分批推進；完成後停止，不新增建站階段。
