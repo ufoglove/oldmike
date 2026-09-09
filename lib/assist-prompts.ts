@@ -112,7 +112,7 @@ export function evidenceMessages(input: { domain: string; direction: string; mon
 export function oneClickInspirationMessages(request: { idempotencyKey?: string; researchFocus?: string; domain?: string; outputTrack?: string; researchDomains?: string[]; researchGoal?: string }, observations: unknown[]): { role: "system" | "user"; content: string }[] {
   const schemaDescription = `Return EXACTLY one JSON object matching this schema:
 {
-  "judgment": "綜合評析與整體研究方向建議（字數 100-500 字）",
+  "judgment": "綜合評析與整體研究方向建議（80-150 字）",
   "evidenceStatus": "UNVERIFIED",
   "evidenceNote": "AI 自主評估說明，尚未經外部即時文獻查證",
   "candidates": [
@@ -141,10 +141,13 @@ export function oneClickInspirationMessages(request: { idempotencyKey?: string; 
   ]
 }
 RULES:
-1. "candidates" must contain between 3 and 10 candidates with IDs "inspiration_1", "inspiration_2", ...
+1. "candidates" must contain EXACTLY 5 candidates with IDs "inspiration_1" through "inspiration_5".
 2. Every candidate MUST provide non-empty strings for: titleZh, titleEn, researchQuestion, literatureGap, innovation, theory, method, feasibility, venue, and score (integer 0-100).
 3. "top3" must contain entries corresponding to candidates in candidates list. Role must be "PRIORITY", "FASTEST", or "PROJECT_SCALE".
-4. Output ONLY the raw JSON object, no Markdown code block, no backticks, no explanatory prose before or after.`;
+4. Output ONLY the raw JSON object, no Markdown code block, no backticks, no explanatory prose before or after.
+5. LENGTH BUDGET (STRICT): every free-text string field must stay within 60 characters; researchQuestion/literatureGap/innovation/method within 80 characters; pros/risks max 2 items each, max 20 characters each.
+6. OUTPUT LANGUAGE: write every free-text field in 繁體中文, EXCEPT titleEn which stays English.
+7. Be concise; the total JSON must stay under 5,000 characters.`;
 
   return [
     {

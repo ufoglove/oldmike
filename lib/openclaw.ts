@@ -352,7 +352,11 @@ export async function tryOpenAiCompatible(input: {
   const body = JSON.stringify({ model, messages: input.messages, stream: false, user: input.sessionKey, max_tokens: 8192 });
   if (Buffer.byteLength(body, "utf8") > input.route.inputLimitBytes) return { kind: "skip", code: "request_invalid" };
   const startedAt = performance.now();
-  const timeoutMs = Math.min(input.route.timeoutMs, 90_000);
+  // HTTP_ACK fix (2026-09-08): honour route.timeoutMs faithfully. Services that own their
+  // own overall deadline (e.g. one-click inspiration) pass explicit per-tier budgets and
+  // enforce cancellation via their own abort signal; a hidden extra clamp here silently
+  // cancelled every tier and surfaced HTTP_ACK. Only clamp pathological values.
+  const timeoutMs = Math.min(input.route.timeoutMs, 600_000);
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
   const abortCause = createAbortCauseTracker(input.signal, timeoutSignal);
   try {

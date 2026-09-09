@@ -1,8 +1,8 @@
 {
   "contractVersion": "old-mike.release-identity.v2",
   "service": "old-mike-research-portal",
-  "version": "1.9.0",
-  "buildId": "REBUILD-20260905",
+  "version": "1.9.1",
+  "buildId": "ONECLICK-FIX-20260908C",
   "researchWorkflowContractVersion": "1.5.6",
   "postgresSchema": "0007"
 }
